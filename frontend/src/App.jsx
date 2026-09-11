@@ -3,7 +3,7 @@ import { Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-rou
 import { Cadastro, Login } from './pages/Autenticacao'
 import Formulario from './pages/Formulario'
 import Historico from './pages/Historico'
-import Resultado from './pages/Resultado'
+import Concluido from './pages/Concluido'
 import { getToken, getUsuario, limparSessao } from './lib/api'
 
 function Protegido() {
@@ -46,7 +46,7 @@ export default function App() {
       <Route element={<Protegido />}>
         <Route path="/formulario" element={<Formulario />} />
         <Route path="/historico" element={<Historico />} />
-        <Route path="/resultado/:id" element={<Resultado />} />
+        <Route path="/concluido" element={<Concluido />} />
       </Route>
       <Route path="*" element={<Navigate to={getToken() ? '/formulario' : '/login'} replace />} />
     </Routes>

@@ -1,3 +1,11 @@
+# =============================================================================
+# MODULO PARADO — NAO ESTA EM USO PELA APLICACAO.
+#
+# A logica de score do TCC ainda sera definida e validada cientificamente pelo
+# autor. Este arquivo fica aqui apenas como rascunho de referencia e NAO e
+# importado por nenhuma rota. Pode ser reescrito ou removido livremente.
+# =============================================================================
+
 """Cálculo de carga de treino e ACWR (Acute:Chronic Workload Ratio).
 
 Carga da sessão = duração (min) x RPE  (método de Foster, sRPE).

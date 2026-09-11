@@ -55,7 +55,12 @@ class Avaliacao(Base):
 
     consentimento_foto: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Resultado
+    # Etapa 2 — arquivo de historico de treino (armazenado, ainda nao analisado)
+    csv_arquivo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    csv_nome_original: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Resultado — reservado para a logica de score, ainda a definir pelo autor do TCC.
+    # Permanece nulo enquanto o score nao for implementado.
     acwr: Mapped[float | None] = mapped_column(Float, nullable=True)
     carga_aguda: Mapped[float | None] = mapped_column(Float, nullable=True)
     carga_cronica: Mapped[float | None] = mapped_column(Float, nullable=True)

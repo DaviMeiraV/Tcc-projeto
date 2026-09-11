@@ -1,3 +1,13 @@
+"""Recebimento das submissões do formulário de pesquisa.
+
+Nesta fase o objetivo é apenas **coletar e armazenar** os dados dos participantes.
+As fotografias e o arquivo CSV são guardados como enviados, sem nenhum processamento.
+
+O cálculo do score de risco (questionário, ACWR e análise de imagem) ainda será
+definido e validado cientificamente pelo autor do TCC, e por isso não é executado
+nem exposto aqui.
+"""
+
 import json
 import uuid
 from pathlib import Path
@@ -9,12 +19,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db import get_db
-from app.models import Avaliacao, Foto, SessaoTreino, Usuario
+from app.models import Avaliacao, Foto, Usuario
 from app.routers.auth import usuario_atual
 from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
-from app.services import acwr as acwr_svc
-from app.services import foto as foto_svc
-from app.services import risco as risco_svc
 
 router = APIRouter(prefix="/avaliacoes", tags=["avaliacoes"])
 
@@ -37,7 +44,7 @@ async def criar_avaliacao(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Recebe o formulário completo, calcula o ACWR, analisa as fotos e gera o risco."""
+    """Registra uma submissão completa do formulário."""
     try:
         dados = AvaliacaoCriar.model_validate_json(payload)
     except ValidationError as exc:
@@ -51,25 +58,11 @@ async def criar_avaliacao(
     if len(dados.fotos_meta) != len(fotos):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cada foto precisa ter modalidade e fase informadas")
 
-    # ---- 1. Histórico de treino -> ACWR ----
-    sessoes: list[acwr_svc.Sessao] = []
-    if csv_treino and csv_treino.filename:
-        conteudo = await csv_treino.read()
-        if len(conteudo) > MAX_BYTES:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Arquivo CSV maior que 8 MB")
-        try:
-            sessoes = acwr_svc.ler_csv(conteudo)
-        except ValueError as exc:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-        if not sessoes:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nenhuma sessão de treino válida foi encontrada no CSV")
-    acwr_dados = acwr_svc.calcular_acwr(sessoes)
-
-    # ---- 2. Fotografias -> análise postural ----
     destino = _dir_upload()
-    salvas: list[tuple[str, str, dict]] = []
-    analises: list[dict] = []
-    for arquivo, meta in zip(fotos, dados.fotos_meta):
+
+    # ---- Fotografias: apenas armazenadas, com os rótulos informados ----
+    salvas: list[tuple[str, str]] = []
+    for arquivo in fotos:
         ext = Path(arquivo.filename).suffix.lower()
         if ext not in EXTENSOES_IMAGEM:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Formato não suportado: {ext}. Use JPG, JPEG ou PNG.")
@@ -79,36 +72,33 @@ async def criar_avaliacao(
 
         nome = f"{uuid.uuid4().hex}{ext}"
         (destino / nome).write_bytes(conteudo)
-        analise = foto_svc.analisar_imagem(str(destino / nome), meta.modalidade, meta.fase, meta.joelho_frente)
-        analises.append(analise)
-        salvas.append((nome, arquivo.filename, analise))
+        salvas.append((nome, arquivo.filename))
 
-    # ---- 3. Escore final ----
-    resultado = risco_svc.avaliar(dados.model_dump(), acwr_dados, analises)
+    # ---- Histórico de treino: guardado como veio, sem leitura do conteúdo ----
+    csv_arquivo = csv_nome = None
+    if csv_treino and csv_treino.filename:
+        if not csv_treino.filename.lower().endswith(".csv"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "O histórico de treino precisa ser um arquivo .csv")
+        conteudo = await csv_treino.read()
+        if len(conteudo) > MAX_BYTES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Arquivo CSV maior que 8 MB")
+        csv_arquivo = f"{uuid.uuid4().hex}.csv"
+        (destino / csv_arquivo).write_bytes(conteudo)
+        csv_nome = csv_treino.filename
 
     avaliacao = Avaliacao(
         usuario_id=usuario.id,
         **dados.model_dump(exclude={"fotos_meta"}),
-        acwr=acwr_dados["acwr"],
-        carga_aguda=acwr_dados["carga_aguda"],
-        carga_cronica=acwr_dados["carga_cronica"],
-        score_risco=resultado["score"],
-        classificacao=resultado["classificacao"],
-        detalhes=resultado,
+        csv_arquivo=csv_arquivo,
+        csv_nome_original=csv_nome,
     )
     db.add(avaliacao)
     db.flush()
 
-    for (nome, original, analise), meta in zip(salvas, dados.fotos_meta):
+    for (nome, original), meta in zip(salvas, dados.fotos_meta):
         db.add(Foto(
             avaliacao_id=avaliacao.id, arquivo=nome, nome_original=original,
-            modalidade=meta.modalidade, fase=meta.fase,
-            joelho_frente=meta.joelho_frente, analise=analise,
-        ))
-    for s in sessoes:
-        db.add(SessaoTreino(
-            avaliacao_id=avaliacao.id, data=s.data, duracao_min=s.duracao_min,
-            distancia_km=s.distancia_km, rpe=s.rpe, carga=s.carga,
+            modalidade=meta.modalidade, fase=meta.fase, joelho_frente=meta.joelho_frente,
         ))
 
     db.commit()
@@ -139,5 +129,7 @@ def remover(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: Se
     destino = _dir_upload()
     for f in avaliacao.fotos:
         (destino / f.arquivo).unlink(missing_ok=True)
+    if avaliacao.csv_arquivo:
+        (destino / avaliacao.csv_arquivo).unlink(missing_ok=True)
     db.delete(avaliacao)
     db.commit()

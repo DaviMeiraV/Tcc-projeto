@@ -189,8 +189,8 @@ export default function Formulario() {
       fotos.forEach((f) => dados.append('fotos', f.arquivo))
       if (csv) dados.append('csv_treino', csv)
 
-      const avaliacao = await api.enviarAvaliacao(dados)
-      navegar(`/resultado/${avaliacao.id}`, { replace: true })
+      await api.enviarAvaliacao(dados)
+      navegar('/concluido', { replace: true })
     } catch (erro) {
       setErroGeral(erro.message)
       setEnviando(false)
@@ -252,7 +252,7 @@ export default function Formulario() {
               </button>
             ) : (
               <button type="button" className="btn primario" onClick={enviar} disabled={enviando}>
-                {enviando ? 'Analisando…' : 'Enviar e analisar'}
+                {enviando ? 'Enviando…' : 'Finalizar'}
               </button>
             )}
           </div>
@@ -456,8 +456,7 @@ function Etapa2({
           </div>
         )}
         <p className="dica" style={{ marginTop: 10 }}>
-          O arquivo é usado para calcular o ACWR (razão entre carga aguda e crônica). São reconhecidas exportações do
-          Strava e do Garmin, ou uma planilha com colunas de data, duração e — opcionalmente — distância, RPE ou frequência cardíaca.
+          O arquivo será utilizado posteriormente como parte dos dados da pesquisa. Nenhum conteúdo é analisado nesta página.
         </p>
       </div>
     </>
@@ -489,7 +488,7 @@ function Etapa3({ form, fotos, csv }) {
   return (
     <div className="secao">
       <h2>Revisão</h2>
-      <p className="ajuda">Confira as informações antes de enviar. A análise é gerada imediatamente após o envio.</p>
+      <p className="ajuda">Confira as informações antes de enviar.</p>
 
       <div className="revisao">
         {linhas.map(([rotulo, valor]) => (
@@ -523,11 +522,6 @@ function Etapa3({ form, fotos, csv }) {
         </div>
       )}
 
-      {!csv && (
-        <p className="dica" style={{ marginTop: 16 }}>
-          Sem o CSV de treino o ACWR não é calculado, e o escore passa a considerar apenas o questionário e as fotografias.
-        </p>
-      )}
     </div>
   )
 }

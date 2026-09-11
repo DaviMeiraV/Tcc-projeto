@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -66,19 +66,15 @@ class FotoOut(BaseModel):
     modalidade: str
     fase: str
     joelho_frente: str | None
-    analise: dict[str, Any] | None
-
-
-class SessaoOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    data: datetime
-    duracao_min: float
-    distancia_km: float | None
-    rpe: float | None
-    carga: float
 
 
 class AvaliacaoOut(BaseModel):
+    """Dados coletados, devolvidos como foram recebidos.
+
+    Nenhum campo de score e exposto: a logica de pontuacao ainda sera definida
+    e validada cientificamente pelo autor do TCC.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     criado_em: datetime
@@ -94,14 +90,8 @@ class AvaliacaoOut(BaseModel):
     recuperacao: int
     lesao_previa: bool
     dor_limita: bool
-    acwr: float | None
-    carga_aguda: float | None
-    carga_cronica: float | None
-    score_risco: float | None
-    classificacao: str | None
-    detalhes: dict[str, Any] | None
+    csv_nome_original: str | None = None
     fotos: list[FotoOut] = []
-    sessoes: list[SessaoOut] = []
 
 
 class AvaliacaoResumo(BaseModel):
@@ -109,6 +99,4 @@ class AvaliacaoResumo(BaseModel):
     id: int
     criado_em: datetime
     esporte: str
-    acwr: float | None
-    score_risco: float | None
-    classificacao: str | None
+    csv_nome_original: str | None = None

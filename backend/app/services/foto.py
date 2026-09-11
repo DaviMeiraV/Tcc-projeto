@@ -1,3 +1,11 @@
+# =============================================================================
+# MODULO PARADO — NAO ESTA EM USO PELA APLICACAO.
+#
+# A logica de score do TCC ainda sera definida e validada cientificamente pelo
+# autor. Este arquivo fica aqui apenas como rascunho de referencia e NAO e
+# importado por nenhuma rota. Pode ser reescrito ou removido livremente.
+# =============================================================================
+
 """Análise das fotografias da prática esportiva.
 
 O objetivo é extrair indicadores posturais simples da imagem enviada, sem depender

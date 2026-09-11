@@ -1,3 +1,10 @@
+// =============================================================================
+// TELA PARADA — NAO ESTA NAS ROTAS DA APLICACAO.
+//
+// A apresentacao do score sera definida pelo autor do TCC depois da validacao
+// cientifica. Este arquivo fica como rascunho e nao e importado por App.jsx.
+// =============================================================================
+
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 

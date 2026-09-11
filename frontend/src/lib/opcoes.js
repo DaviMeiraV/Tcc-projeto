@@ -48,6 +48,7 @@ export const PERGUNTAS = [
   { chave: 'recuperacao', titulo: 'Quão recuperado se sente para outro treino?', escala: '0 = nada · 10 = totalmente', inicial: 5 },
 ]
 
+// Usados apenas pela tela parada de resultado.
 export const ROTULOS_RISCO = {
   baixo: 'Risco baixo',
   moderado: 'Risco moderado',
