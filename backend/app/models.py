@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -104,3 +104,20 @@ class SessaoTreino(Base):
     carga: Mapped[float] = mapped_column(Float)
 
     avaliacao: Mapped[Avaliacao] = relationship(back_populates="sessoes")
+
+
+class Arquivo(Base):
+    """Conteúdo das fotos e CSVs enviados, guardado no próprio banco.
+
+    O disco do Render gratuito é apagado a cada deploy ou quando o serviço dorme;
+    no banco (Neon) os arquivos ficam permanentes. `fotos.arquivo` e
+    `avaliacoes.csv_arquivo` apontam para `arquivos.nome`.
+    """
+
+    __tablename__ = "arquivos"
+
+    nome: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(100))
+    tamanho_bytes: Mapped[int] = mapped_column(Integer)
+    conteudo: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)

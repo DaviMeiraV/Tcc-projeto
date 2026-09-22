@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-change-me"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-    UPLOAD_DIR: str = "../uploads"
     CORS_ORIGINS: str = "http://localhost:5173"
     # Pasta com o build do React (npm run build). Quando existe, a API também
     # serve o frontend — é assim que roda no Docker e no deploy.

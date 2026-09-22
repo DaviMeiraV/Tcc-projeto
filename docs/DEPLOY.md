@@ -7,11 +7,12 @@ O sistema fica no ar sem custo usando dois serviços:
 | Banco PostgreSQL | [Neon](https://neon.com) | Free | Gratuito **permanente**, sem cartão de crédito |
 | API + telas + Swagger | [Render](https://render.com) | Free | Roda o `Dockerfile` do projeto direto do GitHub |
 
+Respostas, fotos e CSVs ficam **todos no banco**, que é permanente.
+
 ```mermaid
 flowchart LR
     U[Participante<br/>navegador] -->|HTTPS| R[Render<br/>container Docker<br/>React + FastAPI]
-    R -->|SQL / SSL| N[(Neon<br/>PostgreSQL)]
-    R -.->|fotos e CSV| D[Disco temporário<br/>do container]
+    R -->|SQL / SSL| N[(Neon<br/>PostgreSQL<br/>respostas + fotos + CSVs)]
 ```
 
 > **Por que o banco não fica no Render?** O Postgres gratuito do Render **expira 30 dias após a
@@ -81,7 +82,7 @@ https://tcc-risco-lesao.onrender.com
 | `https://SEU-APP.onrender.com/docs` | Swagger da API |
 
 Crie uma conta pela tela de cadastro e envie um formulário de teste. No Neon, em **Tables**, as
-tabelas `usuarios`, `avaliacoes` e `fotos` devem aparecer com o registro.
+tabelas `usuarios`, `avaliacoes`, `fotos` e `arquivos` devem aparecer com o registro.
 
 Esse é o link para mandar aos participantes.
 
@@ -92,50 +93,41 @@ Esse é o link para mandar aos participantes.
 | Situação | O que acontece | Impacto |
 |---|---|---|
 | 15 min sem nenhum acesso | O Render **desliga** o container | O próximo acesso demora **cerca de 1 minuto** para abrir |
-| Container desligado, reiniciado ou com novo deploy | O disco é **apagado** | Fotos e CSVs enviados somem (veja abaixo) |
 | 5 min sem consultas | O Neon suspende o banco | A primeira consulta seguinte demora um pouco mais; nada se perde |
-| Banco passa de 0,5 GB | O Neon bloqueia gravações | Improvável: cada envio ocupa poucos KB no banco |
+| Banco passa de 0,5 GB | O Neon bloqueia gravações | Improvável: cabem mais de mil fotos (veja abaixo) |
 | 750 horas de container por mês | Suficiente para 1 serviço ligado o mês inteiro | Nenhum |
 
 **Antes de mandar o link para alguém**, abra o sistema você mesmo e espere carregar. Assim o
 participante não pega a espera de 1 minuto e não desiste achando que está fora do ar.
 
-### Arquivos enviados são temporários
+### Onde ficam as fotos e os CSVs
 
-O banco (Neon) é permanente: **todas as respostas do questionário ficam guardadas**. Já as fotos
-e os CSVs ficam no disco do container do Render, que é apagado quando o container:
+**No banco, junto com as respostas** (tabela `arquivos`). O disco do Render é apagado a cada
+deploy, reinício ou quando o serviço dorme, então nada é gravado nele. Tudo o que o participante
+envia fica no Neon e é permanente.
 
-- faz um novo deploy — **o que acontece a cada `git push` na `main`**;
-- reinicia;
-- dorme depois de 15 minutos sem acesso.
-
-Quando isso acontece, o registro do envio continua no banco com o nome do arquivo, mas a imagem
-em `/uploads/...` passa a responder 404.
-
-Para não perder arquivos durante uma rodada de coleta:
-
-- **Evite dar push na `main`** enquanto os participantes estiverem respondendo. Se precisar
-  trabalhar no código, desligue *Auto-Deploy* em **Settings** do serviço no Render.
-- **Baixe os arquivos logo depois** de cada rodada (veja abaixo).
-
-Se as fotos passarem a ser necessárias para a análise do TCC, a solução definitiva é guardá-las
-fora do container (no próprio banco ou em um armazenamento de objetos gratuito). Isso exige uma
-mudança pequena no backend.
+As fotos são convertidas para JPEG com no máximo 1920 px de lado antes de gravar: uma foto de
+celular de 3 a 5 MB passa a ocupar algumas centenas de KB e continua nítida. Com os 0,5 GB do
+Neon, cabem **mais de mil fotos**. Para acompanhar o espaço usado, veja a consulta de tamanho em
+[BANCO-DE-DADOS.md](BANCO-DE-DADOS.md#outras).
 
 ### Baixando os dados coletados
 
 - **Respostas:** exporte do Neon com a consulta de
   [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md#exportar-a-coleta-para-análise-csv).
-- **Fotos e CSVs:** enquanto o container estiver no ar, cada arquivo abre em
-  `https://SEU-APP.onrender.com/uploads/NOME_DO_ARQUIVO`. Os nomes estão nas colunas
-  `fotos.arquivo` e `avaliacoes.csv_arquivo`.
+- **Fotos e CSVs:** cada arquivo abre em `https://SEU-APP.onrender.com/uploads/NOME_DO_ARQUIVO`.
+  Os nomes estão nas colunas `fotos.arquivo` e `avaliacoes.csv_arquivo`; a consulta
+  "Fotos com seus rótulos" de [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md#outras) lista todos.
 
 ---
 
 ## Atualizando o sistema
 
 Com o Blueprint, **todo `git push` na `main` gera um deploy automático**. Não há nada para fazer no
-Render — mas lembre que o deploy apaga os arquivos enviados até então.
+Render, e nenhum dado se perde: respostas e arquivos estão no banco.
+
+Durante o deploy (alguns minutos) o sistema fica fora do ar. Evite fazer push enquanto
+participantes estiverem respondendo.
 
 Para acompanhar ou refazer um deploy: painel do serviço → **Events** / **Manual Deploy**.
 
@@ -169,7 +161,3 @@ Mesma causa acima: a tela é servida sem o banco, mas o login precisa dele.
 
 **Demora muito para abrir.**
 É o container acordando. Espere cerca de 1 minuto e recarregue.
-
-**Uma foto antiga não abre (404).**
-Esperado depois de um deploy, reinício ou período sem uso. Veja
-[Arquivos enviados são temporários](#arquivos-enviados-são-temporários).

@@ -16,7 +16,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    UPLOAD_DIR=/app/uploads \
     STATIC_DIR=/app/static
 
 WORKDIR /app
@@ -27,10 +26,8 @@ RUN pip install -r requirements.txt
 COPY backend/app ./app
 COPY --from=frontend /frontend/dist ./static
 
-# Roda sem root; a pasta de uploads precisa ser gravável pelo usuário da app.
-RUN useradd --create-home appuser \
-    && mkdir -p /app/uploads \
-    && chown -R appuser /app
+# Roda sem root. Fotos e CSVs ficam no banco, então nada é gravado em disco.
+RUN useradd --create-home appuser && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000

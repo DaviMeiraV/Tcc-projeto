@@ -15,6 +15,8 @@ erDiagram
     usuarios ||--o{ avaliacoes : "envia"
     avaliacoes ||--o{ fotos : "tem até 3"
     avaliacoes ||--o{ sessoes_treino : "reservada"
+    fotos }o--|| arquivos : "conteúdo em"
+    avaliacoes }o--o| arquivos : "CSV em"
 
     usuarios {
         int id PK
@@ -50,6 +52,13 @@ erDiagram
         timestamptz data
         float carga
     }
+    arquivos {
+        varchar nome PK
+        varchar tipo
+        int tamanho_bytes
+        bytea conteudo
+        timestamptz criado_em
+    }
 ```
 
 | Tabela | O que guarda | Em uso hoje? |
@@ -58,10 +67,11 @@ erDiagram
 | `avaliacoes` | Um formulário enviado: dados pessoais, questionário e referência ao CSV | Sim |
 | `fotos` | Cada fotografia enviada, com os rótulos escolhidos pelo participante | Sim |
 | `sessoes_treino` | Linhas do CSV já interpretadas | **Não** — reservada para o cálculo de carga |
+| `arquivos` | Conteúdo das fotos e dos CSVs enviados | Sim |
 
 **Exclusão em cascata:** apagar um usuário apaga as avaliações dele; apagar uma avaliação apaga
-as fotos e sessões dela (`ON DELETE CASCADE`). A rota `DELETE /api/avaliacoes/{id}` também remove
-os arquivos do disco.
+as fotos e sessões dela (`ON DELETE CASCADE`). A rota `DELETE /api/avaliacoes/{id}` também apaga
+as linhas correspondentes em `arquivos`.
 
 ---
 
@@ -122,7 +132,7 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 | Coluna | Tipo | Nulo | Descrição |
 |---|---|---|---|
 | `consentimento_foto` | `boolean` | não | Marcou a autorização de uso das fotos |
-| `csv_arquivo` | `varchar(255)` | sim | Nome do arquivo salvo em `uploads/` (gerado, ex. `3f2a….csv`) |
+| `csv_arquivo` | `varchar(255)` | sim | Nome gerado (ex. `3f2a….csv`) → `arquivos.nome` |
 | `csv_nome_original` | `varchar(255)` | sim | Nome do arquivo no computador do participante |
 
 **Reservadas para o score** — existem na tabela, mas hoje ficam **sempre nulas**:
@@ -142,7 +152,7 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 |---|---|---|---|
 | `id` | `integer` | não | Chave primária |
 | `avaliacao_id` | `integer` | não | FK → `avaliacoes.id`, indexada |
-| `arquivo` | `varchar(255)` | não | Nome do arquivo salvo em `uploads/`; a imagem fica em `/uploads/{arquivo}` |
+| `arquivo` | `varchar(255)` | não | Nome gerado (ex. `9c1d….jpg`) → `arquivos.nome`; a imagem abre em `/uploads/{arquivo}` |
 | `nome_original` | `varchar(255)` | não | Nome no computador do participante |
 | `modalidade` | `varchar(20)` | não | `corrida`, `ciclismo` |
 | `fase` | `varchar(40)` | não | Corrida: `contato_inicial`, `apoio_medio` · Ciclismo: `fase_superior`, `extensao_maxima` |
@@ -166,19 +176,24 @@ de carga for implementado, cada linha do CSV vira uma linha aqui.
 
 ---
 
-## Onde ficam os arquivos
+### `arquivos`
 
-O banco guarda **só o nome** dos arquivos. Fotos e CSVs ficam em disco, na pasta definida por
-`UPLOAD_DIR`:
+Guarda o conteúdo das fotos e dos CSVs. Fica no banco, e não em disco, porque o disco do Render
+gratuito é apagado a cada deploy ou quando o serviço dorme.
 
-| Ambiente | Pasta | Persistência |
-|---|---|---|
-| Desenvolvimento | `uploads/` na raiz do projeto | Permanente |
-| Docker local | volume `uploads` | Sobrevive a `docker compose down` (some com `down -v`) |
-| Render gratuito | `/app/uploads` no container | **Temporária** — ver [DEPLOY.md](DEPLOY.md#arquivos-enviados-são-temporários) |
+| Coluna | Tipo | Nulo | Descrição |
+|---|---|---|---|
+| `nome` | `varchar(255)` | não | Chave primária, gerada aleatoriamente (`<hex>.jpg` ou `<hex>.csv`) |
+| `tipo` | `varchar(100)` | não | `image/jpeg` ou `text/csv` |
+| `tamanho_bytes` | `integer` | não | Tamanho do conteúdo |
+| `conteudo` | `bytea` | não | O arquivo em si |
+| `criado_em` | `timestamptz` | não | Momento do envio (UTC) |
 
-Se o arquivo sumir do disco, a linha no banco continua lá: o registro do envio e todas as
-respostas do questionário são preservados, só a imagem deixa de abrir.
+- **Fotos** são convertidas para JPEG com no máximo 1920 px de lado (qualidade 85) antes de
+  gravar e ficam com algumas centenas de KB. Um arquivo que não seja uma imagem válida é recusado.
+- **CSVs** são guardados exatamente como enviados, byte a byte.
+- Qualquer arquivo abre em `/uploads/{nome}` sem precisar de login (para a foto aparecer numa
+  tag `<img>`); os nomes são aleatórios e não dá para adivinhá-los.
 
 ---
 
@@ -230,13 +245,16 @@ SELECT ROUND(AVG(dor), 1) AS dor, ROUND(AVG(fadiga), 1) AS fadiga,
        ROUND(AVG(sono), 1) AS sono, ROUND(AVG(recuperacao), 1) AS recuperacao
 FROM avaliacoes;
 
--- Fotos com seus rótulos
+-- Fotos com seus rótulos (abra cada uma em /uploads/<arquivo>)
 SELECT a.id AS envio, f.modalidade, f.fase, f.joelho_frente, f.arquivo
 FROM fotos f JOIN avaliacoes a ON a.id = f.avaliacao_id
 ORDER BY a.id;
 
--- Tamanho ocupado (o Neon gratuito permite 0,5 GB)
-SELECT pg_size_pretty(pg_database_size(current_database()));
+-- Espaço ocupado (o Neon gratuito permite 0,5 GB)
+SELECT pg_size_pretty(pg_database_size(current_database())) AS banco_inteiro,
+       pg_size_pretty(COALESCE(SUM(tamanho_bytes), 0))     AS so_arquivos,
+       COUNT(*) FILTER (WHERE tipo = 'image/jpeg')         AS fotos
+FROM arquivos;
 ```
 
 ### Acessar o banco pelo terminal

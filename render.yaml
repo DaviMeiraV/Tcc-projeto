@@ -3,6 +3,7 @@
 #
 # O banco NÃO é criado aqui: o Postgres gratuito do Render expira em 30 dias,
 # então o banco fica no Neon (gratuito e permanente) e entra via DATABASE_URL.
+# Fotos e CSVs também ficam no banco: o disco do Render é apagado a cada deploy.
 
 services:
   - type: web

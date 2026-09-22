@@ -35,11 +35,8 @@ services:
       CORS_ORIGINS: http://localhost:5173
     ports:
       - "8000:8000"
-    volumes:
-      # Localmente as fotos sobrevivem a reinícios; no Render gratuito, não.
-      - uploads:/app/uploads
     restart: unless-stopped
 
 volumes:
+  # Banco inteiro, incluindo as fotos e CSVs enviados (tabela `arquivos`).
   dados_postgres:
-  uploads:

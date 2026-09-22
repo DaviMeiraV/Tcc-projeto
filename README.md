@@ -44,7 +44,7 @@ docker compose up --build
 | **2. Arquivos** | Até 3 fotografias da prática esportiva, cada uma com modalidade, fase do movimento e joelho à frente; arquivo CSV com o histórico de treino |
 | **3. Revisão** | Conferência de tudo antes do envio |
 
-Ao finalizar, os dados vão para o PostgreSQL e os arquivos para o disco. Nada é analisado nesta fase.
+Ao finalizar, tudo vai para o PostgreSQL: respostas, fotos e CSVs. Nada é analisado nesta fase.
 
 ## Telas
 
@@ -85,6 +85,7 @@ Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 │       ├── models.py        tabelas do banco
 │       ├── schemas.py       validação de entrada e saída
 │       ├── db.py            conexão com o PostgreSQL
+│       ├── armazenamento.py fotos e CSVs gravados no banco
 │       ├── core/            configuração e segurança (bcrypt + JWT)
 │       ├── routers/         rotas: auth.py, avaliacoes.py
 │       └── services/        rascunhos de score — PARADOS, não usados
@@ -94,7 +95,6 @@ Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 │       │                    (Resultado.jsx: rascunho PARADO, fora das rotas)
 │       ├── components/      campos, chips e sliders reutilizáveis
 │       └── lib/             cliente da API e listas de opções
-├── uploads/                 fotos e CSVs enviados (fora do Git)
 └── exemplo_treinos.csv      histórico de treino de exemplo para testes
 ```
 
@@ -113,5 +113,5 @@ O **score de risco** — a contribuição científica do trabalho. A estrutura p
 - O sistema **não emite diagnóstico nem pontuação** ao participante nesta fase.
 - As tabelas são criadas automaticamente na subida; não há migrations
   ([ver como alterar o esquema](docs/BANCO-DE-DADOS.md#alterando-o-esquema)).
-- No deploy gratuito, fotos e CSVs são **temporários**
-  ([detalhes](docs/DEPLOY.md#arquivos-enviados-são-temporários)); as respostas ficam no banco, que é permanente.
+- Fotos e CSVs ficam no próprio banco, então nada se perde em deploys ou reinícios
+  ([detalhes](docs/DEPLOY.md#onde-ficam-as-fotos-e-os-csvs)).

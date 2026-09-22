@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db import Base, engine
+from app.db import Base, engine, get_db
+from app.models import Arquivo
 from app.routers import auth, avaliacoes
 
 
@@ -76,9 +77,31 @@ def saude() -> dict:
     return {"status": "ok"}
 
 
-uploads = Path(settings.UPLOAD_DIR).resolve()
-uploads.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads)), name="uploads")
+@app.get(
+    "/uploads/{nome}",
+    tags=["avaliacoes"],
+    summary="Baixar foto ou CSV enviado",
+    response_class=Response,
+    responses={
+        200: {"content": {"image/jpeg": {}, "text/csv": {}}, "description": "Conteúdo do arquivo"},
+        404: {"description": "Arquivo inexistente"},
+    },
+)
+def baixar_arquivo(nome: str, db: Session = Depends(get_db)):
+    """Devolve um arquivo guardado no banco. O nome vem de `fotos.arquivo` ou `csv_arquivo`.
+
+    Não exige token para que a foto possa ser exibida numa tag `<img>`; os nomes são
+    aleatórios e impossíveis de adivinhar.
+    """
+    arquivo = db.get(Arquivo, nome)
+    if arquivo is None:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    return Response(
+        content=arquivo.conteudo,
+        media_type=arquivo.tipo,
+        # O conteúdo de um nome nunca muda, então o navegador pode guardar em cache.
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
+    )
 
 
 # ---------------------------------------------------------------------------

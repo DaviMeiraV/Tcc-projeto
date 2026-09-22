@@ -49,13 +49,13 @@ docker compose up -d --build     # sobe em segundo plano (libera o terminal)
 docker compose logs -f app       # acompanha os logs da aplicação
 docker compose ps                # mostra o que está rodando
 docker compose down              # desliga (os dados continuam salvos)
-docker compose down -v           # desliga e APAGA banco e arquivos enviados
+docker compose down -v           # desliga e APAGA o banco (respostas, fotos e CSVs)
 ```
 
 Mudou algum código? Rode `docker compose up -d --build` de novo para reconstruir a imagem.
 
-Banco e arquivos enviados ficam em volumes do Docker (`dados_postgres` e `uploads`), então
-sobrevivem a `down` e a reinícios do computador. Só `down -v` os apaga.
+Respostas, fotos e CSVs ficam todos no banco, que usa o volume do Docker `dados_postgres`:
+sobrevive a `down` e a reinícios do computador. Só `down -v` apaga.
 
 ---
 
@@ -117,7 +117,6 @@ Um modelo pronto está em [`backend/.env.example`](../backend/.env.example).
 | `DATABASE_URL` | `postgresql+psycopg://postgres:postgres@localhost:5433/injuryrisk` | Conexão com o banco. Aceita também `postgresql://` e `postgres://`, como Neon e Render entregam |
 | `SECRET_KEY` | `dev-secret-change-me` | Assina os tokens de login. **Troque em produção** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Validade do login (24 horas) |
-| `UPLOAD_DIR` | `../uploads` | Onde fotos e CSVs são gravados |
 | `STATIC_DIR` | `static` | Build do React. Se existir, a API também serve as telas |
 | `CORS_ORIGINS` | `http://localhost:5173` | Origens liberadas para chamar a API, separadas por vírgula |
 | `PORT` | `8000` | Porta do servidor dentro do container |
