@@ -9,7 +9,7 @@ from app.models import Usuario
 from app.schemas import TokenOut, UsuarioCriar, UsuarioLogin, UsuarioOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-esquema = HTTPBearer(auto_error=False)
+esquema = HTTPBearer(auto_error=False, description="Cole aqui o `access_token` devolvido pelo login.")
 
 
 def usuario_atual(
@@ -27,8 +27,18 @@ def usuario_atual(
     return usuario
 
 
-@router.post("/cadastro", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+ERRO_401 = {401: {"description": "Token ausente, inválido ou expirado"}}
+
+
+@router.post(
+    "/cadastro",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar conta",
+    responses={409: {"description": "Já existe uma conta com este e-mail"}},
+)
 def cadastrar(dados: UsuarioCriar, db: Session = Depends(get_db)):
+    """Cria o usuário e já devolve um token de acesso, sem precisar logar em seguida."""
     email = dados.email.lower()
     if db.scalar(select(Usuario).where(Usuario.email == email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Já existe uma conta com este e-mail")
@@ -40,14 +50,24 @@ def cadastrar(dados: UsuarioCriar, db: Session = Depends(get_db)):
     return TokenOut(access_token=criar_token(usuario.email), usuario=UsuarioOut.model_validate(usuario))
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post(
+    "/login",
+    response_model=TokenOut,
+    summary="Entrar",
+    responses={401: {"description": "E-mail ou senha incorretos"}},
+)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
+    """Autentica por e-mail e senha. O token vale 24 horas.
+
+    Use o `access_token` no botão **Authorize** para liberar as demais rotas.
+    """
     usuario = db.scalar(select(Usuario).where(Usuario.email == dados.email.lower()))
     if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos")
     return TokenOut(access_token=criar_token(usuario.email), usuario=UsuarioOut.model_validate(usuario))
 
 
-@router.get("/eu", response_model=UsuarioOut)
+@router.get("/eu", response_model=UsuarioOut, summary="Usuário autenticado", responses=ERRO_401)
 def eu(usuario: Usuario = Depends(usuario_atual)):
+    """Devolve os dados do dono do token."""
     return usuario

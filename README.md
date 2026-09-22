@@ -1,148 +1,117 @@
 # Sistema de Predição de Risco de Lesão — TCC
 
-**Fase atual: coleta de dados.**
+Sistema web para coleta de dados de atletas de **corrida** e **ciclismo**, base de um modelo de
+predição de risco de lesão.
 
-O software recebe e armazena os dados dos participantes (questionário, fotografias da prática
-esportiva e arquivo de histórico de treino). Ao final do formulário o participante vê apenas a
-confirmação de que os dados foram recebidos.
+**Fase atual: coleta de dados.** O participante preenche um formulário em três etapas e recebe
+apenas a confirmação de que os dados foram recebidos. O **cálculo do score de risco ainda não está
+implementado**: a lógica será definida e validada cientificamente pelo autor do TCC a partir das
+respostas coletadas.
 
-O **cálculo do score de risco ainda não está implementado**: a lógica de pontuação será definida
-e validada cientificamente pelo autor do TCC, depois da primeira rodada de coletas.
-
-Stack: **FastAPI + PostgreSQL + React (Vite)**.
-
----
-
-## Como rodar
-
-### 1. Banco de dados
-
-```bash
-docker compose up -d
-```
-
-Sobe um PostgreSQL 16 em `localhost:5433` (base `injuryrisk`, usuário/senha `postgres`).
-
-> Se preferir usar um Postgres já instalado, ajuste `DATABASE_URL` em `backend/.env`.
-
-### 2. Backend
-
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
-copy .env.example .env          # já vem configurado para o docker-compose
-uvicorn app.main:app --reload
-```
-
-API em <http://localhost:8000> · documentação interativa em <http://localhost:8000/docs>.
-
-As tabelas são criadas automaticamente na subida da aplicação.
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Interface em <http://localhost:5173>. O Vite faz proxy de `/api` e `/uploads` para o backend.
-
-### 4. Testar
-
-Crie uma conta em `/cadastro` e preencha o formulário. O arquivo `exemplo_treinos.csv`
-(na raiz do projeto) serve como histórico de treino de exemplo. Ao finalizar, a tela confirma
-que os dados foram recebidos; os registros ficam visíveis em `/historico`.
+**Stack:** FastAPI · PostgreSQL · React (Vite) · Docker
 
 ---
 
-## Fluxo da aplicação
+## Rodar em 1 minuto
 
-| Tela | Rota | Conteúdo |
-|------|------|----------|
-| Login / Cadastro | `/login`, `/cadastro` | Autenticação simples por e-mail e senha (JWT) |
-| Etapa 1 | `/formulario` | Dados do participante + questionário com sliders 0-10 |
-| Etapa 2 | `/formulario` | Upload de até 3 fotos (modalidade, fase, joelho) + CSV de treino |
-| Etapa 3 | `/formulario` | Revisão de todos os dados antes do envio |
-| Conclusão | `/concluido` | Confirmação de que os dados foram recebidos |
-| Enviados | `/historico` | Lista dos formulários já enviados pela conta |
+Com o [Docker Desktop](https://www.docker.com/products/docker-desktop/) aberto:
+
+```bash
+docker compose up --build
+```
+
+| Endereço | O quê |
+|---|---|
+| <http://localhost:8000> | Sistema |
+| <http://localhost:8000/docs> | Swagger (documentação interativa da API) |
+
+## Documentação
+
+| Guia | Conteúdo |
+|---|---|
+| [Como rodar](docs/COMO-RODAR.md) | Docker, modo de desenvolvimento, variáveis de ambiente, testes e problemas comuns |
+| [Banco de dados](docs/BANCO-DE-DADOS.md) | Diagrama, todas as tabelas e colunas, onde ficam os arquivos, consultas para exportar a coleta |
+| [Deploy gratuito](docs/DEPLOY.md) | Passo a passo no Neon + Render, limites do plano gratuito |
+| Swagger (`/docs`) | Cada rota da API com exemplos, testável pelo navegador |
 
 ---
 
-## O que ainda não está implementado
+## O que o sistema coleta
 
-O **score de risco**. Essa é a contribuição científica do trabalho e será construída a partir
-das respostas coletadas nesta fase, com validação na literatura.
+| Etapa | Conteúdo |
+|---|---|
+| **1. Participante e questionário** | Idade, sexo, esporte, tempo de prática, peso, altura; esforço percebido, dor, fadiga, sono e recuperação (0 a 10); histórico de lesão e se a dor limita os treinos |
+| **2. Arquivos** | Até 3 fotografias da prática esportiva, cada uma com modalidade, fase do movimento e joelho à frente; arquivo CSV com o histórico de treino |
+| **3. Revisão** | Conferência de tudo antes do envio |
 
-Já existe estrutura pronta para receber essa lógica quando ela for definida:
+Ao finalizar, os dados vão para o PostgreSQL e os arquivos para o disco. Nada é analisado nesta fase.
 
-- a tabela `avaliacoes` tem as colunas `score_risco`, `classificacao`, `acwr`, `carga_aguda`,
-  `carga_cronica` e `detalhes`, hoje sempre nulas;
-- a tabela `sessoes_treino` está criada para quando o CSV passar a ser interpretado;
-- há rascunhos **não utilizados** em `backend/app/services/` (`acwr.py`, `foto.py`, `risco.py`)
-  e em `frontend/src/pages/Resultado.jsx`. Eles não são importados por nenhuma rota e servem
-  apenas como material de apoio — podem ser reescritos ou apagados.
+## Telas
 
-## Formato do CSV de treino
+| Rota | Tela |
+|---|---|
+| `/login`, `/cadastro` | Acesso por e-mail e senha |
+| `/formulario` | Formulário em 3 etapas |
+| `/concluido` | Confirmação de recebimento |
+| `/historico` | Formulários já enviados pela conta |
 
-Nesta fase o arquivo é apenas **armazenado**, sem leitura do conteúdo. O formato sugerido aos
-participantes é a exportação do **Strava** ou do **Garmin**, que já traz data, duração,
-distância e frequência cardíaca — campos que serão úteis quando o cálculo de carga for feito.
+## API
 
-```csv
-Activity Date,Activity Type,Elapsed Time,Distance,Average Heart Rate
-2026-08-20 07:12:00,Run,2700,8200,152
-```
+Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 
-O nome original do arquivo fica registrado em `avaliacoes.csv_nome_original`, e o arquivo em `uploads/`.
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| `POST` | `/api/auth/cadastro` | Cria conta e devolve o token | |
+| `POST` | `/api/auth/login` | Autentica e devolve o token | |
+| `GET` | `/api/auth/eu` | Dados do usuário autenticado | ✓ |
+| `POST` | `/api/avaliacoes` | Envia o formulário (`multipart/form-data`) | ✓ |
+| `GET` | `/api/avaliacoes` | Lista os envios do usuário | ✓ |
+| `GET` | `/api/avaliacoes/{id}` | Detalha um envio | ✓ |
+| `DELETE` | `/api/avaliacoes/{id}` | Exclui um envio e seus arquivos | ✓ |
+| `GET` | `/api/saude` | Status do serviço | |
 
 ---
 
 ## Estrutura
 
 ```
-backend/
-  app/
-    core/        configuração e segurança (bcrypt + JWT)
-    routers/     auth.py, avaliacoes.py
-    services/    acwr.py, foto.py, risco.py  (PARADOS — nao usados)
-    models.py    tabelas: usuarios, avaliacoes, fotos, sessoes_treino
-    schemas.py   validação de entrada e saída
-    main.py
-frontend/
-  src/
-    pages/       Autenticacao, Formulario (3 etapas), Concluido, Historico
-                 Resultado.jsx (PARADO — fora das rotas)
-    components/  campos, chips e sliders reutilizáveis
-    lib/         cliente da API e listas de opções
-uploads/         fotos e arquivos CSV enviados
-docker-compose.yml
-exemplo_treinos.csv
+├── Dockerfile               imagem única: compila o React e serve tudo pela API
+├── docker-compose.yml       banco + aplicação para rodar localmente
+├── render.yaml              configuração do deploy no Render
+├── docs/                    guias do projeto
+├── backend/
+│   └── app/
+│       ├── main.py          criação da API, Swagger e entrega das telas
+│       ├── models.py        tabelas do banco
+│       ├── schemas.py       validação de entrada e saída
+│       ├── db.py            conexão com o PostgreSQL
+│       ├── core/            configuração e segurança (bcrypt + JWT)
+│       ├── routers/         rotas: auth.py, avaliacoes.py
+│       └── services/        rascunhos de score — PARADOS, não usados
+├── frontend/
+│   └── src/
+│       ├── pages/           Autenticacao, Formulario, Concluido, Historico
+│       │                    (Resultado.jsx: rascunho PARADO, fora das rotas)
+│       ├── components/      campos, chips e sliders reutilizáveis
+│       └── lib/             cliente da API e listas de opções
+├── uploads/                 fotos e CSVs enviados (fora do Git)
+└── exemplo_treinos.csv      histórico de treino de exemplo para testes
 ```
 
----
+## O que ainda não está implementado
 
-## Endpoints
+O **score de risco** — a contribuição científica do trabalho. A estrutura para recebê-lo já existe:
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `POST` | `/auth/cadastro` | Cria conta e devolve token |
-| `POST` | `/auth/login` | Autentica e devolve token |
-| `GET` | `/auth/eu` | Dados do usuário autenticado |
-| `POST` | `/avaliacoes` | Envia o formulário completo (multipart) e registra os dados |
-| `GET` | `/avaliacoes` | Lista os envios do usuário |
-| `GET` | `/avaliacoes/{id}` | Detalha um envio |
-| `DELETE` | `/avaliacoes/{id}` | Remove um envio e seus arquivos |
+- colunas `score_risco`, `classificacao`, `acwr`, `carga_aguda`, `carga_cronica` e `detalhes` na
+  tabela `avaliacoes`, hoje sempre nulas;
+- tabela `sessoes_treino`, para quando o CSV passar a ser interpretado;
+- rascunhos **não utilizados** em `backend/app/services/` e `frontend/src/pages/Resultado.jsx`,
+  que não são importados por nenhuma rota e podem ser reescritos ou apagados.
 
----
+## Observações
 
-## Observações para a defesa do TCC
-
-- Nesta fase o sistema **não emite nenhum diagnóstico nem pontuação** ao participante: apenas
-  confirma o recebimento dos dados.
-- As tabelas são criadas com `create_all` na subida — adequado para o MVP. Para produção,
-  migre para **Alembic**.
-- As fotos ficam em disco na pasta `uploads/`; para deploy real, use um bucket (S3 ou similar).
-- `SECRET_KEY` em `.env` deve ser trocada antes de qualquer publicação.
+- O sistema **não emite diagnóstico nem pontuação** ao participante nesta fase.
+- As tabelas são criadas automaticamente na subida; não há migrations
+  ([ver como alterar o esquema](docs/BANCO-DE-DADOS.md#alterando-o-esquema)).
+- No deploy gratuito, fotos e CSVs são **temporários**
+  ([detalhes](docs/DEPLOY.md#arquivos-enviados-são-temporários)); as respostas ficam no banco, que é permanente.

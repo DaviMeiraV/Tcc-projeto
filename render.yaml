@@ -1,0 +1,22 @@
+# Blueprint do Render — cria o serviço web a partir deste repositório.
+# Passo a passo completo em docs/DEPLOY.md.
+#
+# O banco NÃO é criado aqui: o Postgres gratuito do Render expira em 30 dias,
+# então o banco fica no Neon (gratuito e permanente) e entra via DATABASE_URL.
+
+services:
+  - type: web
+    name: tcc-risco-lesao
+    runtime: docker
+    plan: free
+    region: virginia            # mesma região do banco no Neon (AWS us-east-1)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/saude
+    autoDeploy: true            # cada push na main gera um novo deploy
+    envVars:
+      - key: DATABASE_URL
+        sync: false             # o Render pede este valor na criação: cole a URL do Neon
+      - key: SECRET_KEY
+        generateValue: true     # o Render gera uma chave aleatória
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"

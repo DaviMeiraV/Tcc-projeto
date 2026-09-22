@@ -1,3 +1,9 @@
+# Sobe o sistema completo localmente com um comando:
+#
+#   docker compose up --build
+#
+# Depois acesse http://localhost:8000 (sistema) e http://localhost:8000/docs (Swagger).
+
 services:
   db:
     image: postgres:16-alpine
@@ -7,6 +13,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: injuryrisk
     ports:
+      # Exposto na 5433 para não conflitar com um Postgres já instalado na máquina.
       - "5433:5432"
     volumes:
       - dados_postgres:/var/lib/postgresql/data
@@ -16,5 +23,23 @@ services:
       timeout: 5s
       retries: 10
 
+  app:
+    build: .
+    container_name: tcc_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/injuryrisk
+      SECRET_KEY: chave-apenas-para-uso-local
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      # Localmente as fotos sobrevivem a reinícios; no Render gratuito, não.
+      - uploads:/app/uploads
+    restart: unless-stopped
+
 volumes:
   dados_postgres:
+  uploads:

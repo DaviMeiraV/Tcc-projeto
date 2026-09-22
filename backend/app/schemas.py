@@ -6,12 +6,20 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # ---------- auth ----------
 class UsuarioCriar(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [{"nome": "Participante Teste", "email": "participante@exemplo.com", "senha": "123456"}]
+    })
+
     nome: str = Field(min_length=2, max_length=120)
     email: EmailStr
     senha: str = Field(min_length=6, max_length=72)
 
 
 class UsuarioLogin(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [{"email": "participante@exemplo.com", "senha": "123456"}]
+    })
+
     email: EmailStr
     senha: str
 

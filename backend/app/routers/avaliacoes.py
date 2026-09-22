@@ -23,7 +23,35 @@ from app.models import Avaliacao, Foto, Usuario
 from app.routers.auth import usuario_atual
 from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
 
-router = APIRouter(prefix="/avaliacoes", tags=["avaliacoes"])
+router = APIRouter(
+    prefix="/avaliacoes",
+    tags=["avaliacoes"],
+    responses={401: {"description": "Token ausente, inválido ou expirado"}},
+)
+
+# Exemplo exibido no Swagger: o campo `payload` já vem preenchido para teste.
+EXEMPLO_PAYLOAD = json.dumps(
+    {
+        "idade": 24,
+        "sexo": "masculino",
+        "esporte": "corrida",
+        "tempo_pratica": "1_3_anos",
+        "peso_kg": 72.5,
+        "altura_cm": 178,
+        "rpe": 6,
+        "dor": 2,
+        "fadiga": 4,
+        "sono": 7,
+        "recuperacao": 6,
+        "lesao_previa": True,
+        "dor_limita": False,
+        "lesao_descricao": "Canelite na perna direita",
+        "lesao_quando": "6_12_meses",
+        "consentimento_foto": False,
+        "fotos_meta": [],
+    },
+    ensure_ascii=False,
+)
 
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png"}
 MAX_FOTOS = 3
@@ -36,15 +64,55 @@ def _dir_upload() -> Path:
     return destino
 
 
-@router.post("", response_model=AvaliacaoOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=AvaliacaoOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Enviar formulário",
+    responses={
+        400: {"description": "Arquivo inválido, fotos sem rótulo ou sem consentimento"},
+        422: {"description": "Algum campo do `payload` fora do formato esperado"},
+    },
+)
 async def criar_avaliacao(
-    payload: str = Form(..., description="JSON com os dados das etapas 1 e 2"),
-    fotos: list[UploadFile] = File(default=[]),
-    csv_treino: UploadFile | None = File(default=None),
+    payload: str = Form(
+        ...,
+        description="JSON com os dados das etapas 1 e 2 (formato no exemplo).",
+        examples=[EXEMPLO_PAYLOAD],
+    ),
+    fotos: list[UploadFile] = File(
+        default=[],
+        description="Até 3 imagens JPG, JPEG ou PNG, de até 8 MB cada.",
+    ),
+    csv_treino: UploadFile | None = File(
+        default=None,
+        description="Histórico de treino em CSV (opcional), até 8 MB.",
+    ),
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Registra uma submissão completa do formulário."""
+    """Registra uma submissão completa do formulário (requisição `multipart/form-data`).
+
+    **Regras de validação**
+
+    * `fotos_meta` precisa ter **um item por foto**, na mesma ordem dos arquivos.
+    * Com fotos, `consentimento_foto` precisa ser `true`.
+    * `joelho_frente` é esperado apenas quando `modalidade` é `corrida`.
+
+    **Valores aceitos**
+
+    | Campo | Valores |
+    |---|---|
+    | `sexo` | `masculino`, `feminino`, `outro` |
+    | `esporte` / `modalidade` | `corrida`, `ciclismo` |
+    | `tempo_pratica` | `menos_6_meses`, `6_meses_1_ano`, `1_3_anos`, `3_5_anos`, `mais_5_anos` |
+    | `lesao_quando` | `menos_3_meses`, `3_6_meses`, `6_12_meses`, `mais_1_ano` |
+    | `fase` (corrida) | `contato_inicial`, `apoio_medio` |
+    | `fase` (ciclismo) | `fase_superior`, `extensao_maxima` |
+    | `rpe`, `dor`, `fadiga`, `sono`, `recuperacao` | inteiro de 0 a 10 |
+
+    Fotos e CSV são guardados como enviados, **sem nenhuma análise**.
+    """
     try:
         dados = AvaliacaoCriar.model_validate_json(payload)
     except ValidationError as exc:
@@ -106,23 +174,36 @@ async def criar_avaliacao(
     return avaliacao
 
 
-@router.get("", response_model=list[AvaliacaoResumo])
+@router.get("", response_model=list[AvaliacaoResumo], summary="Listar meus envios")
 def listar(usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """Formulários enviados pelo usuário autenticado, do mais recente para o mais antigo."""
     return db.scalars(
         select(Avaliacao).where(Avaliacao.usuario_id == usuario.id).order_by(Avaliacao.id.desc())
     ).all()
 
 
-@router.get("/{avaliacao_id}", response_model=AvaliacaoOut)
+@router.get(
+    "/{avaliacao_id}",
+    response_model=AvaliacaoOut,
+    summary="Detalhar um envio",
+    responses={404: {"description": "Envio inexistente ou de outro usuário"}},
+)
 def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """Todos os dados de um envio. As fotos ficam acessíveis em `/uploads/{arquivo}`."""
     avaliacao = db.get(Avaliacao, avaliacao_id)
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
     return avaliacao
 
 
-@router.delete("/{avaliacao_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{avaliacao_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir um envio",
+    responses={404: {"description": "Envio inexistente ou de outro usuário"}},
+)
 def remover(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """Apaga o envio, as fotos e o CSV associados. Não pode ser desfeito."""
     avaliacao = db.get(Avaliacao, avaliacao_id)
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")

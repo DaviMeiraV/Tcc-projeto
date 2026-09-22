@@ -1,0 +1,15 @@
+# Mantém a imagem pequena e sem segredos locais.
+.git
+.gitignore
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.pyc
+frontend/dist
+backend/.env
+uploads
+docs
+*.md
+exemplo_treinos.csv
+docker-compose.yml
+render.yaml
