@@ -57,6 +57,7 @@ export default function Historico() {
                     <td>{rotuloDe(ESPORTES, a.esporte)}</td>
                     <td>{a.csv_nome_original || '—'}</td>
                     <td style={{ textAlign: 'right' }}>
+                      <Link to={`/concluido/${a.id}`} className="btn secundario">Ver envio</Link>{' '}
                       <button type="button" className="remover" onClick={() => remover(a.id)}>Excluir</button>
                     </td>
                   </tr>

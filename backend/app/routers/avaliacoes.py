@@ -1,13 +1,4 @@
-"""Recebimento das submissões do formulário de pesquisa.
-
-Nesta fase o objetivo é apenas **coletar e armazenar** os dados dos participantes.
-As fotografias (reduzidas para economizar espaço) e o arquivo CSV são guardados no
-próprio banco, sem nenhuma análise do conteúdo.
-
-O cálculo do score de risco (questionário, ACWR e análise de imagem) ainda será
-definido e validado cientificamente pelo autor do TCC, e por isso não é executado
-nem exposto aqui.
-"""
+"""Coleta do formulário e análise postural das fotografias pela API externa."""
 
 import json
 from pathlib import Path
@@ -16,12 +7,14 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app import armazenamento
 from app.db import get_db
 from app.models import Avaliacao, Foto, Usuario
 from app.routers.auth import usuario_atual
 from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
+from app.services.analise_postural import processar_fotos
 
 router = APIRouter(
     prefix="/avaliacoes",
@@ -105,8 +98,10 @@ async def criar_avaliacao(
     | `fase` (ciclismo) | `fase_superior`, `extensao_maxima` |
     | `rpe`, `dor`, `fadiga`, `sono`, `recuperacao` | inteiro de 0 a 10 |
 
-    Fotos e CSV são guardados no banco, **sem nenhuma análise**. As fotos são convertidas
-    para JPEG com no máximo 1920 px de lado.
+    O formulário e os arquivos são salvos antes da chamada à API postural.
+    As fotos são convertidas para JPEG com no máximo 1920 px de lado.
+    Cada foto retorna `analise` com o resultado e o PNG armazenado, ou o erro.
+    O CSV é apenas armazenado. Falhas da API não apagam o formulário.
     """
     try:
         dados = AvaliacaoCriar.model_validate_json(payload)
@@ -161,8 +156,17 @@ async def criar_avaliacao(
         ))
 
     db.commit()
-    db.refresh(avaliacao)
-    return avaliacao
+    return await run_in_threadpool(processar_fotos, db, avaliacao.id)
+
+
+@router.post("/{avaliacao_id}/analises", response_model=AvaliacaoOut, summary="Tentar análises pendentes novamente")
+async def repetir_analises(
+    avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db),
+):
+    avaliacao = db.get(Avaliacao, avaliacao_id)
+    if not avaliacao or avaliacao.usuario_id != usuario.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
+    return await run_in_threadpool(processar_fotos, db, avaliacao_id)
 
 
 @router.get("", response_model=list[AvaliacaoResumo], summary="Listar meus envios")
@@ -195,10 +199,14 @@ def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: S
 )
 def remover(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
     """Apaga o envio, as fotos e o CSV associados. Não pode ser desfeito."""
-    avaliacao = db.get(Avaliacao, avaliacao_id)
+    avaliacao = db.scalar(select(Avaliacao).where(Avaliacao.id == avaliacao_id).with_for_update())
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
     arquivos = [f.arquivo for f in avaliacao.fotos]
+    for foto in avaliacao.fotos:
+        tratada = (foto.analise or {}).get("imagem_tratada", {}).get("arquivo")
+        if tratada:
+            arquivos.append(tratada)
     if avaliacao.csv_arquivo:
         arquivos.append(avaliacao.csv_arquivo)
     armazenamento.remover(db, arquivos)

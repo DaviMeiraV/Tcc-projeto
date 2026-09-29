@@ -21,3 +21,7 @@ services:
         generateValue: true     # o Render gera uma chave aleatória
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
+      - key: ANALISE_API_URL
+        sync: false             # URL acessível da API postural externa
+      - key: ANALISE_API_TIMEOUT
+        value: "120"

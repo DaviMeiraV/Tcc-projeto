@@ -7,17 +7,15 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db import Base, engine, get_db
+from app.db import engine, get_db
+from app.migracoes import inicializar_banco
 from app.models import Arquivo
 from app.routers import auth, avaliacoes
 
 
 @asynccontextmanager
 async def ciclo_de_vida(_: FastAPI):
-    # Para o MVP, criar as tabelas na subida basta; em produção, use Alembic.
-    import app.models  # noqa: F401  garante o registro dos modelos no metadata
-
-    Base.metadata.create_all(bind=engine)
+    inicializar_banco(engine)
     yield
 
 
@@ -31,8 +29,9 @@ Recebe e armazena, para cada participante:
 * até 3 fotografias da prática esportiva;
 * arquivo CSV com o histórico de treino.
 
-Nesta fase **nenhum score é calculado**: a lógica de pontuação será definida e
-validada cientificamente pelo autor do trabalho.
+As fotografias são enviadas à API postural externa, e o PNG tratado e o score
+postural (0 a 1) ficam associados a cada foto. O score de risco de lesão combinado
+com questionário e treino ainda não está implementado.
 
 ## Como testar por aqui
 
@@ -83,7 +82,7 @@ def saude() -> dict:
     summary="Baixar foto ou CSV enviado",
     response_class=Response,
     responses={
-        200: {"content": {"image/jpeg": {}, "text/csv": {}}, "description": "Conteúdo do arquivo"},
+        200: {"content": {"image/jpeg": {}, "image/png": {}, "text/csv": {}}, "description": "Conteúdo do arquivo"},
         404: {"description": "Arquivo inexistente"},
     },
 )

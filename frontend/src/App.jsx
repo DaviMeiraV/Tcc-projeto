@@ -47,6 +47,7 @@ export default function App() {
         <Route path="/formulario" element={<Formulario />} />
         <Route path="/historico" element={<Historico />} />
         <Route path="/concluido" element={<Concluido />} />
+        <Route path="/concluido/:id" element={<Concluido />} />
       </Route>
       <Route path="*" element={<Navigate to={getToken() ? '/formulario' : '/login'} replace />} />
     </Routes>

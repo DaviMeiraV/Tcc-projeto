@@ -58,7 +58,9 @@ export default function Formulario() {
   const refImagens = useRef(null)
   const refCsv = useRef(null)
 
-  useEffect(() => () => fotos.forEach((f) => URL.revokeObjectURL(f.preview)), [fotos])
+  const fotosAtuais = useRef(fotos)
+  useEffect(() => { fotosAtuais.current = fotos }, [fotos])
+  useEffect(() => () => fotosAtuais.current.forEach((f) => URL.revokeObjectURL(f.preview)), [])
 
   const set = (chave) => (valor) => {
     setForm((f) => ({ ...f, [chave]: valor }))
@@ -88,6 +90,7 @@ export default function Formulario() {
     setFotos((atuais) => {
       const total = [...atuais, ...novas]
       if (total.length > MAX_FOTOS) setErroGeral(`Envie no máximo ${MAX_FOTOS} imagens.`)
+      total.slice(MAX_FOTOS).forEach((f) => URL.revokeObjectURL(f.preview))
       return total.slice(0, MAX_FOTOS)
     })
   }
@@ -161,6 +164,7 @@ export default function Formulario() {
   }
 
   async function enviar() {
+    if (enviando) return
     setEnviando(true)
     setErroGeral('')
     try {
@@ -189,8 +193,8 @@ export default function Formulario() {
       fotos.forEach((f) => dados.append('fotos', f.arquivo))
       if (csv) dados.append('csv_treino', csv)
 
-      await api.enviarAvaliacao(dados)
-      navegar('/concluido', { replace: true })
+      const avaliacao = await api.enviarAvaliacao(dados)
+      navegar(`/concluido/${avaliacao.id}`, { replace: true })
     } catch (erro) {
       setErroGeral(erro.message)
       setEnviando(false)
@@ -252,7 +256,7 @@ export default function Formulario() {
               </button>
             ) : (
               <button type="button" className="btn primario" onClick={enviar} disabled={enviando}>
-                {enviando ? 'Enviando…' : 'Finalizar'}
+                {enviando ? 'Salvando e analisando fotos…' : 'Finalizar'}
               </button>
             )}
           </div>
@@ -355,7 +359,7 @@ function Etapa2({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
           <div>
             <h2>Fotografias da prática esportiva</h2>
-            <p className="ajuda">Envie fotografias que serão associadas às informações desta pesquisa.</p>
+            <p className="ajuda">Selecione as fotografias e informe os dados de cada uma. Ao finalizar o formulário, elas serão salvas e enviadas para análise postural.</p>
           </div>
           <button type="button" className="btn secundario" onClick={() => setOrientacoes((v) => !v)}>
             Orientações para as fotografias

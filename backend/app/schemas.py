@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 # ---------- auth ----------
@@ -43,6 +43,20 @@ class FotoMeta(BaseModel):
     fase: str
     joelho_frente: Literal["esquerdo", "direito"] | None = None
 
+    @model_validator(mode="after")
+    def validar_movimento(self):
+        fases = {
+            "corrida": {"contato_inicial", "apoio_medio"},
+            "ciclismo": {"fase_superior", "extensao_maxima"},
+        }
+        if self.fase not in fases[self.modalidade]:
+            raise ValueError("Fase inválida para a modalidade informada")
+        if self.modalidade == "corrida" and not self.joelho_frente:
+            raise ValueError("Informe o joelho à frente para corrida")
+        if self.modalidade == "ciclismo":
+            self.joelho_frente = None
+        return self
+
 
 class AvaliacaoCriar(BaseModel):
     idade: int = Field(ge=10, le=90)
@@ -74,14 +88,11 @@ class FotoOut(BaseModel):
     modalidade: str
     fase: str
     joelho_frente: str | None
+    analise: dict | None = None
 
 
 class AvaliacaoOut(BaseModel):
-    """Dados coletados, devolvidos como foram recebidos.
-
-    Nenhum campo de score e exposto: a logica de pontuacao ainda sera definida
-    e validada cientificamente pelo autor do TCC.
-    """
+    """Dados coletados e análise postural por foto, sem score de risco combinado."""
 
     model_config = ConfigDict(from_attributes=True)
     id: int

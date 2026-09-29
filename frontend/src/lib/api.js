@@ -68,6 +68,7 @@ export const api = {
   eu: () => requisicao('/auth/eu'),
   listarAvaliacoes: () => requisicao('/avaliacoes'),
   detalharAvaliacao: (id) => requisicao(`/avaliacoes/${id}`),
+  repetirAnalises: (id) => requisicao(`/avaliacoes/${id}/analises`, { method: 'POST' }),
   removerAvaliacao: (id) => requisicao(`/avaliacoes/${id}`, { method: 'DELETE' }),
   enviarAvaliacao: (formData) =>
     requisicao('/avaliacoes', { method: 'POST', body: formData, json: false }),

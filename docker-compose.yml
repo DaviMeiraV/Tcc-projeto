@@ -33,6 +33,10 @@ services:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/injuryrisk
       SECRET_KEY: chave-apenas-para-uso-local
       CORS_ORIGINS: http://localhost:5173
+      ANALISE_API_URL: ${ANALISE_API_URL:-http://host.docker.internal:8001}
+      ANALISE_API_TIMEOUT: ${ANALISE_API_TIMEOUT:-120}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     restart: unless-stopped

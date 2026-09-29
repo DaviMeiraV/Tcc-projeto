@@ -2,9 +2,10 @@
 
 PostgreSQL 16. Localmente roda no Docker; em produção, no [Neon](https://neon.com) (plano gratuito).
 
-As tabelas são criadas automaticamente quando a API sobe (`Base.metadata.create_all` em
-`backend/app/main.py`), a partir dos modelos em [`backend/app/models.py`](../backend/app/models.py).
-Não há migrations: para alterar uma tabela que já existe, veja [Alterando o esquema](#alterando-o-esquema).
+As tabelas são criadas automaticamente quando a API sobe, a partir dos modelos em
+[`backend/app/models.py`](../backend/app/models.py). A inicialização em
+`backend/app/migracoes.py` também adiciona as colunas de CSV ausentes em bancos antigos,
+preservando os registros. Veja [Alterando o esquema](#alterando-o-esquema).
 
 ---
 
@@ -157,7 +158,7 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 | `modalidade` | `varchar(20)` | não | `corrida`, `ciclismo` |
 | `fase` | `varchar(40)` | não | Corrida: `contato_inicial`, `apoio_medio` · Ciclismo: `fase_superior`, `extensao_maxima` |
 | `joelho_frente` | `varchar(20)` | sim | `esquerdo`, `direito` — só em corrida |
-| `analise` | `jsonb` | sim | Reservada, sempre nula |
+| `analise` | `jsonb` | sim | Resultado postural e referência ao PNG tratado, ou erro da API; nula enquanto não processada |
 
 ### `sessoes_treino`
 
@@ -192,6 +193,7 @@ gratuito é apagado a cada deploy ou quando o serviço dorme.
 - **Fotos** são convertidas para JPEG com no máximo 1920 px de lado (qualidade 85) antes de
   gravar e ficam com algumas centenas de KB. Um arquivo que não seja uma imagem válida é recusado.
 - **CSVs** são guardados exatamente como enviados, byte a byte.
+- **PNGs tratados** são guardados como retornados pela API postural. A referência fica em `fotos.analise.imagem_tratada.arquivo`; veja [o fluxo de análise](ANALISE-POSTURAL.md).
 - Qualquer arquivo abre em `/uploads/{nome}` sem precisar de login (para a foto aparecer numa
   tag `<img>`); os nomes são aleatórios e não dá para adivinhá-los.
 
@@ -277,8 +279,15 @@ porta `5433`, banco `injuryrisk`, usuário e senha `postgres`.
 
 ## Alterando o esquema
 
-Como não há migrations, `create_all` **cria tabelas que faltam, mas não altera tabelas que já
-existem**. Ao adicionar uma coluna em `models.py`, aplique a mudança manualmente:
+`create_all` **cria tabelas que faltam, mas não altera tabelas que já existem**.
+A aplicação executa atualizações explícitas em `backend/app/migracoes.py` na subida:
+adiciona `avaliacoes.csv_arquivo` e `avaliacoes.csv_nome_original` quando ausentes.
+As duas são opcionais; registros existentes recebem `NULL`. A atualização é transacional
+e pode ser repetida sem apagar dados ou sobrescrever valores.
+
+Para aplicar essa correção no Docker, execute `docker compose up -d --build app`.
+Não é necessário excluir o volume do banco. Mudanças futuras precisam de uma atualização
+explícita nesse módulo ou de uma ferramenta de migrations, por exemplo:
 
 ```sql
 ALTER TABLE avaliacoes ADD COLUMN IF NOT EXISTS nova_coluna VARCHAR(50);
