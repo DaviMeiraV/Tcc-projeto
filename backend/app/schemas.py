@@ -110,6 +110,10 @@ class AvaliacaoOut(BaseModel):
     lesao_previa: bool
     dor_limita: bool
     csv_nome_original: str | None = None
+    acwr: float | None = None
+    carga_aguda: float | None = None
+    carga_cronica: float | None = None
+    detalhes: dict | None = None
     fotos: list[FotoOut] = []
 
 

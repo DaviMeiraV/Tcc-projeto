@@ -46,7 +46,7 @@ São reutilizados `fotos.analise` e `arquivos`. Na inicialização, bancos antig
 
 Excluir um envio remove também seus PNGs tratados deste banco; não remove a cópia mantida pela API externa em `saida/`.
 
-O score postural não é o score combinado de risco de lesão, que continua sem implementação. O CSV continua apenas armazenado.
+O score postural não é o score combinado de risco de lesão, que continua sem implementação. O CSV também alimenta o [cálculo de ACWR](ACWR.md), exibido em um componente próprio na página final.
 
 ## Verificação
 

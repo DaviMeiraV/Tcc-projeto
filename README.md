@@ -33,6 +33,7 @@ docker compose up --build
 | [Banco de dados](docs/BANCO-DE-DADOS.md) | Diagrama, todas as tabelas e colunas, onde ficam os arquivos, consultas para exportar a coleta |
 | [Deploy gratuito](docs/DEPLOY.md) | Passo a passo no Neon + Render, limites do plano gratuito |
 | [Análise postural](docs/ANALISE-POSTURAL.md) | Configuração da API externa, envio das fotos, resultados e novas tentativas |
+| [ACWR](docs/ACWR.md) | Leitura da planilha, cálculo das cargas e logs |
 | Swagger (`/docs`) | Cada rota da API com exemplos, testável pelo navegador |
 
 ---
@@ -106,8 +107,8 @@ Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 
 O **score de risco** — a contribuição científica do trabalho. A estrutura para recebê-lo já existe:
 
-- colunas `score_risco`, `classificacao`, `acwr`, `carga_aguda`, `carga_cronica` e `detalhes` na
-  tabela `avaliacoes`, hoje sempre nulas;
+- colunas `score_risco` e `classificacao` na tabela `avaliacoes`, ainda nulas;
+- `acwr`, `carga_aguda`, `carga_cronica` e `detalhes.acwr` já recebem o cálculo da planilha;
 - tabela `sessoes_treino`, para quando o CSV passar a ser interpretado;
 - rascunhos **não utilizados** em `backend/app/services/foto.py`, `acwr.py`, `risco.py` e `frontend/src/pages/Resultado.jsx`,
   que não são importados por nenhuma rota e podem ser reescritos ou apagados.

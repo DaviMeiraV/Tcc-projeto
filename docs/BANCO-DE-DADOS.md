@@ -136,7 +136,9 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 | `csv_arquivo` | `varchar(255)` | sim | Nome gerado (ex. `3f2a….csv`) → `arquivos.nome` |
 | `csv_nome_original` | `varchar(255)` | sim | Nome do arquivo no computador do participante |
 
-**Reservadas para o score** — existem na tabela, mas hoje ficam **sempre nulas**:
+**Resultados** — `acwr`, `carga_aguda`, `carga_cronica` e `detalhes.acwr` são preenchidos
+pela análise da planilha. `score_risco` e `classificacao` continuam reservados e nulos.
+Veja [o cálculo de ACWR](ACWR.md).
 
 | Coluna | Tipo | Uso previsto |
 |---|---|---|

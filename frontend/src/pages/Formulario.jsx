@@ -460,7 +460,7 @@ function Etapa2({
           </div>
         )}
         <p className="dica" style={{ marginTop: 10 }}>
-          O arquivo será utilizado posteriormente como parte dos dados da pesquisa. Nenhum conteúdo é analisado nesta página.
+          O arquivo será salvo e utilizado para calcular a relação entre as cargas de treino dos últimos 7 e 28 dias (ACWR).
         </p>
       </div>
     </>

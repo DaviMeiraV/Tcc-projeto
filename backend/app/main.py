@@ -30,7 +30,8 @@ Recebe e armazena, para cada participante:
 * arquivo CSV com o histórico de treino.
 
 As fotografias são enviadas à API postural externa, e o PNG tratado e o score
-postural (0 a 1) ficam associados a cada foto. O score de risco de lesão combinado
+postural (0 a 1) ficam associados a cada foto. O CSV alimenta o cálculo de ACWR
+(média diária de carga de 7 dias / média diária de 28 dias). O score de risco de lesão combinado
 com questionário e treino ainda não está implementado.
 
 ## Como testar por aqui

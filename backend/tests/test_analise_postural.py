@@ -205,6 +205,56 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(resposta.status_code, 201, resposta.text)
         self.assertEqual(self.requisicoes, [])
 
+    def test_csv_calcula_persiste_e_expoe_acwr_com_logs(self):
+        dados = b'data,duracao,rpe\n2026-09-02,60,5\n2026-09-29,60,5'
+        with self.assertLogs('uvicorn.error', level='INFO') as logs:
+            resposta = self.client.post('/api/avaliacoes',
+                data={'payload': json.dumps({**PAYLOAD, 'fotos_meta': []})},
+                files={'csv_treino': ('treinos.csv', dados, 'text/csv')})
+        self.assertEqual(resposta.status_code, 201, resposta.text)
+        envio = resposta.json()
+        self.assertEqual(envio['acwr'], 2)
+        self.assertEqual(envio['detalhes']['acwr']['mes']['atividades'], 2)
+        self.assertIn('atleta_id=1', logs.output[0])
+        self.assertIn('score=2.0', logs.output[0])
+        self.assertEqual(self.client.get(f'/api/avaliacoes/{envio["id"]}').json()['acwr'], 2)
+        with Session(self.engine) as db:
+            avaliacao = db.get(Avaliacao, envio['id'])
+            self.assertEqual(db.get(Arquivo, avaliacao.csv_arquivo).conteudo, dados)
+            avaliacao.detalhes = None
+            avaliacao.acwr = None
+            db.commit()
+        self.assertEqual(self.client.get(f'/api/avaliacoes/{envio["id"]}').json()['acwr'], 2)
+
+    def test_csv_invalido_preserva_formulario_e_analise_da_foto(self):
+        resposta = self.client.post('/api/avaliacoes',
+            data={'payload': json.dumps({**PAYLOAD, 'fotos_meta': [META]})},
+            files=[('csv_treino', ('invalido.csv', b'invalido', 'text/csv')),
+                   ('fotos', ('foto.png', PNG, 'image/png'))])
+        self.assertEqual(resposta.status_code, 201, resposta.text)
+        self.assertIsNone(resposta.json()['acwr'])
+        self.assertEqual(resposta.json()['detalhes']['acwr']['status'], 'erro')
+        self.assertEqual(resposta.json()['fotos'][0]['analise']['status'], 'concluida')
+
+    def test_csv_sem_rpe_usa_formulario_e_atualiza_resultado_antigo(self):
+        resposta = self.client.post('/api/avaliacoes',
+            data={'payload': json.dumps({**PAYLOAD, 'rpe': 4, 'fotos_meta': []})},
+            files={'csv_treino': ('treinos.csv', b'data,duracao\n2026-09-02,60\n2026-09-29,60', 'text/csv')})
+        self.assertEqual(resposta.status_code, 201, resposta.text)
+        envio = resposta.json()
+        self.assertEqual(envio['detalhes']['acwr']['mes']['carga'], 480)
+        self.assertEqual(envio['detalhes']['acwr']['rpe_formulario'], 4)
+        with Session(self.engine) as db:
+            avaliacao = db.get(Avaliacao, envio['id'])
+            avaliacao.detalhes = {'acwr': {'metodo': 'duracao', 'acwr': 2}}
+            db.commit()
+        atualizado = self.client.get(f'/api/avaliacoes/{envio["id"]}').json()['detalhes']['acwr']
+        self.assertEqual(atualizado['mes']['carga'], 480)
+        self.assertEqual(atualizado['atividades_com_rpe_formulario'], 2)
+        self.assertEqual(atualizado['versao'], 3)
+        self.assertTrue(atualizado['carga_estimada'])
+        self.assertEqual(atualizado['sessoes'][0]['origem_rpe'], 'formulario')
+
     def test_envio_antigo_com_metadados_invalidos_preserva_dados(self):
         envio = self.enviar().json()
         with Session(self.engine) as db:

@@ -11,10 +11,11 @@ from starlette.concurrency import run_in_threadpool
 
 from app import armazenamento
 from app.db import get_db
-from app.models import Avaliacao, Foto, Usuario
+from app.models import Arquivo, Avaliacao, Foto, Usuario
 from app.routers.auth import usuario_atual
 from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
 from app.services.analise_postural import processar_fotos
+from app.services.carga_treino import VERSAO_ACWR, analisar_planilha
 
 router = APIRouter(
     prefix="/avaliacoes",
@@ -101,7 +102,7 @@ async def criar_avaliacao(
     O formulário e os arquivos são salvos antes da chamada à API postural.
     As fotos são convertidas para JPEG com no máximo 1920 px de lado.
     Cada foto retorna `analise` com o resultado e o PNG armazenado, ou o erro.
-    O CSV é apenas armazenado. Falhas da API não apagam o formulário.
+    O CSV é armazenado e usado no cálculo do ACWR. Falhas da análise não apagam o formulário.
     """
     try:
         dados = AvaliacaoCriar.model_validate_json(payload)
@@ -129,8 +130,9 @@ async def criar_avaliacao(
         jpeg = armazenamento.preparar_imagem(conteudo, arquivo.filename)
         salvas.append((armazenamento.salvar(db, jpeg, ".jpg", "image/jpeg"), arquivo.filename))
 
-    # ---- Histórico de treino: guardado como veio, sem leitura do conteúdo ----
+    # ---- Histórico de treino: preserva o arquivo e calcula as cargas ----
     csv_arquivo = csv_nome = None
+    conteudo_csv = None
     if csv_treino and csv_treino.filename:
         if not csv_treino.filename.lower().endswith(".csv"):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "O histórico de treino precisa ser um arquivo .csv")
@@ -139,6 +141,7 @@ async def criar_avaliacao(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Arquivo CSV maior que 8 MB")
         csv_arquivo = armazenamento.salvar(db, conteudo, ".csv", "text/csv")
         csv_nome = csv_treino.filename
+        conteudo_csv = conteudo
 
     avaliacao = Avaliacao(
         usuario_id=usuario.id,
@@ -147,6 +150,8 @@ async def criar_avaliacao(
         csv_nome_original=csv_nome,
     )
     db.add(avaliacao)
+    if conteudo_csv is not None:
+        analisar_planilha(avaliacao, conteudo_csv)
     db.flush()
 
     for (nome, original), meta in zip(salvas, dados.fotos_meta):
@@ -188,6 +193,14 @@ def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: S
     avaliacao = db.get(Avaliacao, avaliacao_id)
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
+    # Envios anteriores também recebem o resultado ao abrir o histórico.
+    resultado_acwr = (avaliacao.detalhes or {}).get("acwr") or {}
+    if avaliacao.csv_arquivo and resultado_acwr.get("versao") != VERSAO_ACWR:
+        arquivo = db.get(Arquivo, avaliacao.csv_arquivo)
+        if arquivo:
+            analisar_planilha(avaliacao, arquivo.conteudo)
+            db.commit()
+            db.refresh(avaliacao)
     return avaliacao
 
 

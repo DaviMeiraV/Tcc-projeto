@@ -41,7 +41,7 @@ export const JOELHOS = [
 ]
 
 export const PERGUNTAS = [
-  { chave: 'rpe', titulo: 'Como você avalia o esforço percebido nos treinos recentes?', escala: '1 = muito leve · 10 = máximo', inicial: 5 },
+  { chave: 'rpe', titulo: 'Como você avalia o esforço percebido nos treinos do último mês?', escala: '1 = muito leve · 10 = máximo', inicial: 5 },
   { chave: 'dor', titulo: 'Qual é seu nível atual de dor ou desconforto físico?', escala: '0 = nenhuma · 10 = muito intensa', inicial: 0 },
   { chave: 'fadiga', titulo: 'Qual é seu nível atual de fadiga?', escala: '0 = nenhuma · 10 = extrema', inicial: 0 },
   { chave: 'sono', titulo: 'Como você avalia sua qualidade de sono recente?', escala: '0 = muito ruim · 10 = excelente', inicial: 5 },
