@@ -34,6 +34,7 @@ docker compose up --build
 | [Deploy gratuito](docs/DEPLOY.md) | Passo a passo no Neon + Render, limites do plano gratuito |
 | [Análise postural](docs/ANALISE-POSTURAL.md) | Configuração da API externa, envio das fotos, resultados e novas tentativas |
 | [ACWR](docs/ACWR.md) | Leitura da planilha, cálculo das cargas e logs |
+| [Score final](docs/SCORE-FINAL.md) | Acesso aos três componentes e ponto para implementar a combinação |
 | Swagger (`/docs`) | Cada rota da API com exemplos, testável pelo navegador |
 
 ---
@@ -93,11 +94,10 @@ Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 │       ├── armazenamento.py fotos e CSVs gravados no banco
 │       ├── core/            configuração e segurança (bcrypt + JWT)
 │       ├── routers/         rotas: auth.py, avaliacoes.py
-│       └── services/        integração postural e rascunhos de score ainda parados
+│       └── services/        análise postural, ACWR, ICSA e consolidação dos scores
 ├── frontend/
 │   └── src/
 │       ├── pages/           Autenticacao, Formulario, Concluido, Historico
-│       │                    (Resultado.jsx: rascunho PARADO, fora das rotas)
 │       ├── components/      campos, chips e sliders reutilizáveis
 │       └── lib/             cliente da API e listas de opções
 └── exemplo_treinos.csv      histórico de treino de exemplo para testes
@@ -109,9 +109,8 @@ O **score de risco** — a contribuição científica do trabalho. A estrutura p
 
 - colunas `score_risco` e `classificacao` na tabela `avaliacoes`, ainda nulas;
 - `acwr`, `carga_aguda`, `carga_cronica` e `detalhes.acwr` já recebem o cálculo da planilha;
-- tabela `sessoes_treino`, para quando o CSV passar a ser interpretado;
-- rascunhos **não utilizados** em `backend/app/services/foto.py`, `acwr.py`, `risco.py` e `frontend/src/pages/Resultado.jsx`,
-  que não são importados por nenhuma rota e podem ser reescritos ou apagados.
+- `services/score_final.py` reúne ACWR, ICSA e os scores das fotos para implementar a fórmula;
+- o mapeamento legado `sessoes_treino` é mantido para preservar a compatibilidade com bancos existentes e a exclusão em cascata. O cálculo atual guarda suas sessões em `detalhes.acwr`.
 
 ## Observações
 

@@ -17,6 +17,7 @@ from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
 from app.services.analise_postural import processar_fotos
 from app.services.carga_treino import VERSAO_ACWR, analisar_planilha
 from app.services.score_subjetivo import atualizar_score_subjetivo
+from app.services.score_final import atualizar_score_final
 
 router = APIRouter(
     prefix="/avaliacoes",
@@ -204,6 +205,8 @@ def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: S
         if arquivo:
             analisar_planilha(avaliacao, arquivo.conteudo)
             atualizado = True
+    if atualizar_score_final(avaliacao):
+        atualizado = True
     if atualizado:
         db.commit()
         db.refresh(avaliacao)

@@ -15,6 +15,7 @@ from app import armazenamento
 from app.core.config import settings
 from app.models import Arquivo, Avaliacao
 from app.schemas import FotoMeta
+from app.services.score_final import atualizar_score_final
 
 FASES = {"contato_inicial": 1, "apoio_medio": 2, "fase_superior": 1, "extensao_maxima": 2}
 
@@ -103,6 +104,7 @@ def processar_fotos(db: Session, avaliacao_id: int) -> Avaliacao:
                 foto.analise = {**resultado, "status": "concluida"}
             except ErroAnalise as exc:
                 foto.analise = {"status": "erro", "erro": str(exc)}
+    atualizar_score_final(avaliacao)
     db.commit()
     db.refresh(avaliacao)
     return avaliacao

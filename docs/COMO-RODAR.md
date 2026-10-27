@@ -174,8 +174,3 @@ O banco não subiu. Veja com `docker compose ps` se `tcc_postgres` está `health
 **Adicionei uma coluna em `models.py` e a aplicação quebrou**
 As tabelas são criadas automaticamente, mas **não alteradas**. Veja
 [Alterando o esquema](BANCO-DE-DADOS.md#alterando-o-esquema).
-
-**`pip install` falha compilando `numpy` no Windows**
-Versões antigas não têm pacote pronto para Python recente. Atualize o pip
-(`python -m pip install --upgrade pip`) e instale de novo; o `requirements.txt` já pede versões
-compatíveis com Python 3.14.

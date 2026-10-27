@@ -48,21 +48,6 @@ export const PERGUNTAS = [
   { chave: 'recuperacao', titulo: 'Quão recuperado se sente para outro treino?', escala: '0 = nada · 10 = totalmente', inicial: 5 },
 ]
 
-// Usados apenas pela tela parada de resultado.
-export const ROTULOS_RISCO = {
-  baixo: 'Risco baixo',
-  moderado: 'Risco moderado',
-  alto: 'Risco alto',
-  muito_alto: 'Risco muito alto',
-}
-
-export const ROTULOS_ACWR = {
-  subcarga: 'Subcarga',
-  ideal: 'Faixa ideal',
-  atencao: 'Atenção',
-  risco: 'Risco elevado',
-}
-
 export function rotuloDe(lista, valor) {
   return lista.find((o) => o.valor === valor)?.rotulo ?? valor ?? '—'
 }

@@ -65,7 +65,6 @@ async function requisicao(caminho, { method = 'GET', body, headers = {}, json = 
 export const api = {
   cadastro: (dados) => requisicao('/auth/cadastro', { method: 'POST', body: dados }),
   login: (dados) => requisicao('/auth/login', { method: 'POST', body: dados }),
-  eu: () => requisicao('/auth/eu'),
   listarAvaliacoes: () => requisicao('/avaliacoes'),
   detalharAvaliacao: (id) => requisicao(`/avaliacoes/${id}`),
   repetirAnalises: (id) => requisicao(`/avaliacoes/${id}/analises`, { method: 'POST' }),
