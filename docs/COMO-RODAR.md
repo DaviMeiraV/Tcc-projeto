@@ -33,7 +33,7 @@ tcc_app  | INFO:     Uvicorn running on http://0.0.0.0:8000
 | <http://localhost:8000> | Sistema (login, formulário) |
 | <http://localhost:8000/docs> | Swagger — documentação interativa da API |
 | <http://localhost:8000/redoc> | Mesma documentação, em formato de leitura |
-| `localhost:5433` | PostgreSQL (usuário `postgres`, senha `postgres`, banco `injuryrisk`) |
+| `localhost:5433` | PostgreSQL (usuário `postgres`, senha `postgres`, banco `injuryqrisk`) |
 
 O que sobe:
 

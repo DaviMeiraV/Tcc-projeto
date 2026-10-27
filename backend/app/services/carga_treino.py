@@ -37,6 +37,8 @@ SEGUNDOS = {"moving time", "elapsed time"}
 
 DIAS_AGUDOS = 7
 DIAS_CRONICOS = 28
+# A rota usa esta versão para identificar resultados antigos que precisam ser recalculados.
+VERSAO_ACWR = 3
 
 
 def normalizar(valor: str) -> str:
@@ -322,6 +324,8 @@ def analisar_planilha(avaliacao, conteudo: bytes) -> None:
             resultado["carga_estimada"],
         )
 
+    # Guarda a versão também em erros, evitando reprocessar o mesmo CSV a cada consulta.
+    resultado["versao"] = VERSAO_ACWR
     avaliacao.acwr = resultado.get("acwr")
     avaliacao.carga_aguda = resultado.get("carga_aguda")
     avaliacao.carga_cronica = resultado.get("carga_cronica")

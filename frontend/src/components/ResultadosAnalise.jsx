@@ -103,8 +103,20 @@ export function ScoreAcwr({ resultado }) {
   )
 }
 
-export function ScoreAtleta() {
-  return <CartaoResultado titulo="Score dos dados do atleta" className="resultado-reservado" />
+export function ScoreAtleta({ resultado }) {
+  const concluido = resultado?.status === 'concluida' && Number.isFinite(resultado.score)
+  return (
+    <CartaoResultado titulo="Score dos dados do atleta">
+      <div className="resultado-valor">
+        {concluido ? (
+          <strong>{resultado.score.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} / 1</strong>
+        ) : (
+          <p className="resultado-mensagem">Índice indisponível: faltam respostas válidas para o cálculo.</p>
+        )}
+      </div>
+      <p className="resultado-mensagem">Índice subjetivo experimental (ICSA). Quanto maior, mais desfavorável a condição subjetiva. Não representa probabilidade de lesão.</p>
+    </CartaoResultado>
+  )
 }
 
 export function ScoreFinal() {

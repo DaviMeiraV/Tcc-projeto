@@ -55,7 +55,7 @@ export default function Concluido() {
               />
               <div className="resultado-scores">
                 <ScoreAcwr resultado={avaliacao?.detalhes?.acwr} />
-                <ScoreAtleta />
+                <ScoreAtleta resultado={avaliacao?.detalhes?.score_subjetivo} />
                 <ScoreFinal />
               </div>
             </div>

@@ -205,6 +205,38 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(resposta.status_code, 201, resposta.text)
         self.assertEqual(self.requisicoes, [])
 
+    def test_score_subjetivo_e_salvo_sem_fotos_ou_csv(self):
+        resposta = self.enviar([], dor=0, fadiga=0, sono=5, recuperacao=5,
+                              dor_limita=True, lesao_previa=True)
+        self.assertEqual(resposta.status_code, 201, resposta.text)
+        envio = resposta.json()
+        resultado = envio['detalhes']['score_subjetivo']
+        self.assertEqual(resultado['score'], 0.45)
+        self.assertEqual(resultado['respostas']['dor'], 0)
+        self.assertTrue(resultado['respostas']['dor_limita'])
+        with Session(self.engine) as db:
+            avaliacao = db.get(Avaliacao, envio['id'])
+            self.assertEqual(avaliacao.detalhes['score_subjetivo'], resultado)
+            self.assertIsNone(avaliacao.score_risco)
+            self.assertIsNone(avaliacao.classificacao)
+
+    def test_score_subjetivo_em_envio_antigo_preserva_acwr_e_respostas(self):
+        envio = self.enviar([]).json()
+        acwr = {'status': 'concluida', 'acwr': 1.2}
+        with Session(self.engine) as db:
+            avaliacao = db.get(Avaliacao, envio['id'])
+            avaliacao.detalhes = {'acwr': acwr}
+            db.commit()
+        consulta = self.client.get(f'/api/avaliacoes/{envio["id"]}')
+        self.assertEqual(consulta.status_code, 200, consulta.text)
+        dados = consulta.json()
+        self.assertEqual(dados['detalhes']['acwr'], acwr)
+        self.assertEqual(dados['detalhes']['score_subjetivo']['score'], 0.215)
+        self.assertEqual(dados['dor'], envio['dor'])
+        with patch('app.services.score_subjetivo.calcular_icsa') as calcular:
+            self.assertEqual(self.client.get(f'/api/avaliacoes/{envio["id"]}').status_code, 200)
+            calcular.assert_not_called()
+
     def test_csv_calcula_persiste_e_expoe_acwr_com_logs(self):
         dados = b'data,duracao,rpe\n2026-09-02,60,5\n2026-09-29,60,5'
         with self.assertLogs('uvicorn.error', level='INFO') as logs:
@@ -234,7 +266,12 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(resposta.status_code, 201, resposta.text)
         self.assertIsNone(resposta.json()['acwr'])
         self.assertEqual(resposta.json()['detalhes']['acwr']['status'], 'erro')
+        self.assertEqual(resposta.json()['detalhes']['acwr']['versao'], 3)
         self.assertEqual(resposta.json()['fotos'][0]['analise']['status'], 'concluida')
+        with patch('app.routers.avaliacoes.analisar_planilha') as recalcular:
+            consulta = self.client.get(f'/api/avaliacoes/{resposta.json()["id"]}')
+            self.assertEqual(consulta.status_code, 200)
+            recalcular.assert_not_called()
 
     def test_csv_sem_rpe_usa_formulario_e_atualiza_resultado_antigo(self):
         resposta = self.client.post('/api/avaliacoes',

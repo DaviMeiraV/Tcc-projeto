@@ -16,6 +16,7 @@ from app.routers.auth import usuario_atual
 from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
 from app.services.analise_postural import processar_fotos
 from app.services.carga_treino import VERSAO_ACWR, analisar_planilha
+from app.services.score_subjetivo import atualizar_score_subjetivo
 
 router = APIRouter(
     prefix="/avaliacoes",
@@ -150,6 +151,7 @@ async def criar_avaliacao(
         csv_nome_original=csv_nome,
     )
     db.add(avaliacao)
+    atualizar_score_subjetivo(avaliacao)
     if conteudo_csv is not None:
         analisar_planilha(avaliacao, conteudo_csv)
     db.flush()
@@ -171,6 +173,7 @@ async def repetir_analises(
     avaliacao = db.get(Avaliacao, avaliacao_id)
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
+    atualizar_score_subjetivo(avaliacao)
     return await run_in_threadpool(processar_fotos, db, avaliacao_id)
 
 
@@ -194,13 +197,16 @@ def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: S
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
     # Envios anteriores também recebem o resultado ao abrir o histórico.
+    atualizado = atualizar_score_subjetivo(avaliacao)
     resultado_acwr = (avaliacao.detalhes or {}).get("acwr") or {}
     if avaliacao.csv_arquivo and resultado_acwr.get("versao") != VERSAO_ACWR:
         arquivo = db.get(Arquivo, avaliacao.csv_arquivo)
         if arquivo:
             analisar_planilha(avaliacao, arquivo.conteudo)
-            db.commit()
-            db.refresh(avaliacao)
+            atualizado = True
+    if atualizado:
+        db.commit()
+        db.refresh(avaliacao)
     return avaliacao
 
 
