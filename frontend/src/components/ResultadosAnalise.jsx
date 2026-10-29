@@ -1,5 +1,7 @@
 import { ESPORTES, FASES, rotuloDe } from '../lib/opcoes'
 
+const formatarScore = (valor) => valor.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+
 function CartaoResultado({ titulo, children, className = '' }) {
   return (
     <section className={`resultado-cartao ${className}`}>
@@ -9,7 +11,7 @@ function CartaoResultado({ titulo, children, className = '' }) {
   )
 }
 
-export function ImagemTratada({ fotos = [], analisando, tentarNovamente }) {
+export function ImagemTratada({ fotos = [], scores = [], analisando, tentarNovamente }) {
   const pendentes = fotos.some((foto) => foto.analise?.status !== 'concluida')
 
   return (
@@ -18,6 +20,7 @@ export function ImagemTratada({ fotos = [], analisando, tentarNovamente }) {
       {fotos.map((foto, i) => {
         const analise = foto.analise
         const tratada = analise?.imagem_tratada?.arquivo
+        const normalizado = scores.find((score) => score.foto_id === foto.id)?.score_normalizado
         return (
           <article className="resultado-foto" key={foto.id}>
             <div className="resultado-foto-cabecalho">
@@ -33,6 +36,7 @@ export function ImagemTratada({ fotos = [], analisando, tentarNovamente }) {
                   <span>Score postural</span>
                   <strong>{analise.score.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} / 1</strong>
                   <small>Quanto maior, melhor</small>
+                  {Number.isFinite(normalizado) && <small>Score padronizado: {formatarScore(normalizado)} / 1 · Quanto maior, maior o desvio dos padrões.</small>}
                 </div>
               )}
             </div>
@@ -67,7 +71,7 @@ export function ImagemTratada({ fotos = [], analisando, tentarNovamente }) {
   )
 }
 
-export function ScoreAcwr({ resultado }) {
+export function ScoreAcwr({ resultado, normalizado }) {
   const valor = resultado?.acwr
   const formatar = (numero) => numero.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
   return (
@@ -95,6 +99,7 @@ export function ScoreAcwr({ resultado }) {
         </>
       )}
       <p className="resultado-formula">
+        {Number.isFinite(normalizado) && <span>Score normalizado: {formatarScore(normalizado)} / 1</span>}
         <span>Carga = minutos × RPE (informado ou aproximado).</span>
         <span>Aguda = média diária de 7 dias; crônica = média diária de 28 dias.</span>
         <span>ACWR = carga aguda ÷ carga crônica.</span>
@@ -109,7 +114,7 @@ export function ScoreAtleta({ resultado }) {
     <CartaoResultado titulo="Score dos dados do atleta">
       <div className="resultado-valor">
         {concluido ? (
-          <strong>{resultado.score.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} / 1</strong>
+          <strong>{formatarScore(resultado.score)} / 1</strong>
         ) : (
           <p className="resultado-mensagem">Índice indisponível: faltam respostas válidas para o cálculo.</p>
         )}
@@ -119,6 +124,16 @@ export function ScoreAtleta({ resultado }) {
   )
 }
 
-export function ScoreFinal() {
-  return <CartaoResultado titulo="Score final" className="resultado-reservado resultado-final" />
+export function ScoreFinal({ resultado }) {
+  return (
+    <CartaoResultado titulo="Score final" className="resultado-final">
+      <div className="resultado-valor">
+        {Number.isFinite(resultado?.score_final)
+          ? <strong>{formatarScore(resultado.score_final)} / 1</strong>
+          : <p className="resultado-mensagem">Score final indisponível. {resultado?.motivos?.join(' ') || 'São necessárias as três análises válidas.'}</p>}
+      </div>
+      <p className="resultado-mensagem">Resultado composto das análises ACWR, postural e dos dados subjetivos. Quanto maior, maior a intensidade dos indicadores desfavoráveis segundo o modelo.</p>
+      <p className="resultado-mensagem">Indicador experimental de composição das três análises. Não representa probabilidade clínica de lesão.</p>
+    </CartaoResultado>
+  )
 }

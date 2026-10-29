@@ -242,6 +242,7 @@ class FluxoTest(unittest.TestCase):
             calcular.assert_not_called()
 
     def test_csv_calcula_persiste_e_expoe_acwr_com_logs(self):
+        # A resposta mantém tanto a razão bruta quanto a transformação.
         dados = b'data,duracao,rpe\n2026-09-02,60,5\n2026-09-29,60,5'
         with self.assertLogs('uvicorn.error', level='INFO') as logs:
             resposta = self.client.post('/api/avaliacoes',
@@ -251,6 +252,7 @@ class FluxoTest(unittest.TestCase):
         envio = resposta.json()
         self.assertEqual(envio['acwr'], 2)
         self.assertEqual(envio['detalhes']['score_final']['score_acwr'], 2)
+        self.assertEqual(envio['detalhes']['score_final']['score_acwr_normalizado'], 1)
         self.assertEqual(envio['detalhes']['score_final']['score_subjetivo'], envio['detalhes']['score_subjetivo']['score'])
         self.assertEqual(envio['detalhes']['acwr']['mes']['atividades'], 2)
         self.assertIn('atleta_id=1', logs.output[0])
@@ -263,6 +265,25 @@ class FluxoTest(unittest.TestCase):
             avaliacao.acwr = None
             db.commit()
         self.assertEqual(self.client.get(f'/api/avaliacoes/{envio["id"]}').json()['acwr'], 2)
+
+    def test_score_final_completo_persistido_e_consultado(self):
+        resposta = self.client.post('/api/avaliacoes',
+            data={'payload': json.dumps({**PAYLOAD, 'fotos_meta': [META]})},
+            files=[('csv_treino', ('treinos.csv', b'data,duracao,rpe\n2026-09-02,60,5\n2026-09-29,60,5', 'text/csv')),
+                   ('fotos', ('foto.png', PNG, 'image/png'))])
+        self.assertEqual(resposta.status_code, 201, resposta.text)
+        envio = resposta.json()
+        final = envio['detalhes']['score_final']
+        self.assertEqual(envio['acwr'], 2)
+        self.assertEqual(final['score_acwr'], 2)
+        self.assertEqual(final['score_acwr_normalizado'], 1)
+        self.assertEqual(final['score_postural_normalizado'], 0.05)
+        self.assertEqual(final['score_final'], round((1 + final['score_subjetivo'] + 0.05) / 3, 4))
+        self.assertEqual(final['foto_id'], envio['fotos'][0]['id'])
+        with Session(self.engine) as db:
+            self.assertEqual(db.get(Avaliacao, envio['id']).detalhes['score_final'], final)
+        consulta = self.client.get(f'/api/avaliacoes/{envio["id"]}').json()
+        self.assertEqual(consulta['detalhes']['score_final'], final)
 
     def test_csv_invalido_preserva_formulario_e_analise_da_foto(self):
         resposta = self.client.post('/api/avaliacoes',

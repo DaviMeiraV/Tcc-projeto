@@ -50,13 +50,14 @@ export default function Concluido() {
             <div className="resultado-grade">
               <ImagemTratada
                 fotos={avaliacao?.fotos}
+                scores={avaliacao?.detalhes?.score_final?.scores_posturais}
                 analisando={analisando}
                 tentarNovamente={tentarNovamente}
               />
               <div className="resultado-scores">
-                <ScoreAcwr resultado={avaliacao?.detalhes?.acwr} />
+                <ScoreAcwr resultado={avaliacao?.detalhes?.acwr} normalizado={avaliacao?.detalhes?.score_final?.score_acwr_normalizado} />
                 <ScoreAtleta resultado={avaliacao?.detalhes?.score_subjetivo} />
-                <ScoreFinal />
+                <ScoreFinal resultado={avaliacao?.detalhes?.score_final} />
               </div>
             </div>
           </section>

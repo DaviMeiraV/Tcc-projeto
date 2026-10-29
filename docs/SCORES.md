@@ -1,6 +1,7 @@
 # Como os três scores são calculados
 
-Este documento descreve o código atual, sem mudar fórmulas ou definir o score final.
+Este documento descreve os três cálculos originais, que foram preservados.
+A padronização e a composição implementadas estão em [SCORE-FINAL.md](SCORE-FINAL.md).
 
 | Score | Origem | Escala atual | Significado de um valor maior |
 |---|---|---|---|
@@ -111,11 +112,13 @@ mas apontam em sentidos opostos. O ACWR é uma razão de cargas, com outra escal
 um valor maior informa aumento relativo da carga, sem representar diretamente a
 mesma condição medida pelos outros scores.
 
-Antes de combiná-los, será necessário definir uma escala e um sentido comuns,
-a transformação do ACWR, os pesos e a regra para várias fotos ou resultados
-ausentes. Colocá-los no mesmo intervalo, sozinho, não garante significado equivalente.
-Nenhuma dessas mudanças foi aplicada.
+A composição agora transforma o ACWR por `min(1, max(0, (ACWR − 1,3) / 0,7))`,
+inverte o postural por `1 − P` e reutiliza o ICSA. O final é a média dos três
+componentes padronizados, com pesos iguais. Colocá-los no mesmo intervalo não
+garante significado clínico equivalente: trata-se de uma regra experimental.
 
-Atualmente, [score_final.py](../backend/app/services/score_final.py) apenas reúne
-`score_acwr`, `score_subjetivo` e `scores_posturais`. O `score_final` permanece
-`None`. Valores ausentes permanecem `None`; zero é um resultado válido.
+[score_final.py](../backend/app/services/score_final.py) preserva os valores brutos
+e retorna também os normalizados. Dados ausentes ou inválidos, histórico marcado
+como incompleto ou várias fotos sem protocolo de seleção deixam o final `None`.
+Zero continua sendo um resultado válido. Veja as regras completas em
+[SCORE-FINAL.md](SCORE-FINAL.md).

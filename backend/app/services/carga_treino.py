@@ -3,7 +3,7 @@
 RPE da planilha é preservado. Quando faltar, o esforço geral do formulário
 é usado como aproximação, com a origem registrada. Não é session-RPE medido.
 
-O fluxo principal está em calcular_csv; analisar_planilha salva e registra logs.
+O fluxo principal está em calcular_acwr; analisar_planilha salva e registra logs.
 """
 
 import csv
@@ -238,7 +238,7 @@ def montar_sessoes(atividades: list[dict]) -> list[dict]:
     ]
 
 
-def calcular_csv(conteudo: bytes, rpe_formulario: float | None = None) -> dict:
+def calcular_acwr(conteudo: bytes, rpe_formulario: float | None = None) -> dict:
     """Calcula o ACWR dos últimos 7 e 28 dias."""
     if rpe_formulario is not None and (
         not math.isfinite(rpe_formulario) or not 0 <= rpe_formulario <= 10
@@ -302,7 +302,7 @@ def calcular_csv(conteudo: bytes, rpe_formulario: float | None = None) -> dict:
 def analisar_planilha(avaliacao, conteudo: bytes) -> None:
     """Calcula, registra e salva o resultado do ACWR."""
     try:
-        resultado = calcular_csv(conteudo, rpe_formulario=avaliacao.rpe)
+        resultado = calcular_acwr(conteudo, rpe_formulario=avaliacao.rpe)
 
     except (ValueError, csv.Error, UnicodeError) as exc:
         resultado = {"status": "erro", "erro": str(exc)}
