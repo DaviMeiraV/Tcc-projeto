@@ -20,7 +20,7 @@ ANALISE_API_TIMEOUT=120
 
 Execute o projeto separado da API postural com `python main.py --host 0.0.0.0 --port 8001`. O sistema web usa a porta 8000; por isso a API postural deve usar outra porta quando ambos estiverem na mesma máquina. Configure a URL base, **sem** `/analises` no final.
 
-No Docker Compose, o endereço padrão é `http://host.docker.internal:8001`, que acessa a API executada na máquina hospedeira. Para outra instalação, defina `ANALISE_API_URL` no ambiente do Compose. No Render, configure essa variável com a URL HTTPS acessível do serviço postural hospedado separadamente; `localhost` não aponta para seu computador.
+No Docker Compose, o endereço padrão é `http://host.docker.internal:8001`, que acessa a API executada na máquina hospedeira. Para outra instalação, defina `ANALISE_API_URL` no ambiente do Compose. No Render, o backend detecta `RENDER=true` e usa `https://opencv-bodyposture-api.onrender.com` automaticamente. Defina `ANALISE_API_URL` no serviço Render apenas para sobrescrever esse endereço; não use `localhost`, que aponta para o próprio container.
 
 O timeout padrão é de 120 segundos por foto. A primeira análise pode demorar pelo carregamento do modelo. A comunicação ocorre no backend, sem necessidade de CORS entre o navegador e a API postural.
 

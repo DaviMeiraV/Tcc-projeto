@@ -2,6 +2,15 @@
 
 Data: 31 de outubro de 2026.
 
+**Atualização em 1 de novembro de 2026:** foram corrigidos os textos sobre cálculos
+implementados no README, Swagger e guias; o nome do banco e a função de ACWR;
+a documentação da API postural e dos resultados JSON; e as descrições do modelo
+legado e das migrações específicas. A classe CSS `.resultado-reservado` foi removida.
+Passaram 49 testes do backend, 5 do frontend, geração do OpenAPI, compilação do
+frontend e verificação de whitespace do diff. As alterações foram mantidas no projeto
+local. As tabelas abaixo preservam os achados originais, incluindo itens fora desse
+escopo, como textos da escala do RPE e condições comerciais dos provedores.
+
 A auditoria encontrou documentação desatualizada sobre os cálculos já implementados, instruções operacionais inconsistentes e uma regra CSS sem referência. Não foram identificados arquivos fonte órfãos ou dependências diretas comprovadamente sem uso. Alguns elementos sem escrita atual são legados de banco e não devem ser removidos apenas por esse motivo.
 
 ## Alteração de interface concluída

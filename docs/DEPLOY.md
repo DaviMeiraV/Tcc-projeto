@@ -10,9 +10,11 @@ também de uma API separada, que deve ser implantada e estar acessível ao backe
 
 Respostas, fotos e CSVs ficam **todos no banco**, que é permanente.
 
-O `render.yaml` deste repositório não implanta a API postural. Configure sua URL
-base em `ANALISE_API_URL`, por exemplo `https://SUA-API-POSTURAL`, sem `/analises`
-no final. A disponibilidade e o custo dessa hospedagem devem ser avaliados
+O `render.yaml` deste repositório não implanta a API postural. No Render, o
+backend detecta automaticamente o ambiente e usa
+`https://opencv-bodyposture-api.onrender.com` como URL base. Para usar outra
+hospedagem, defina `ANALISE_API_URL` no ambiente do serviço, sem `/analises` no
+final. A disponibilidade e o custo da hospedagem da API devem ser avaliados
 separadamente. Veja [Análise postural](ANALISE-POSTURAL.md).
 
 ```mermaid
@@ -63,10 +65,13 @@ O repositório já tem um [`render.yaml`](../render.yaml) que descreve o serviç
 3. Conecte o repositório **`DaviMeiraV/Tcc-projeto`**. Se ele não aparecer, clique em
    *Configure account* e libere o acesso do Render a esse repositório.
 4. O Render lê o `render.yaml` e mostra o serviço `tcc-risco-lesao` a ser criado.
-   Informe **`DATABASE_URL`** com a URL do Neon do passo 1 e **`ANALISE_API_URL`**
-   com a URL HTTPS da API postural separada, acessível pelo serviço Render.
-   Não use `localhost` ou `127.0.0.1`: eles apontam para o próprio container da aplicação.
-   O timeout padrão é 120 segundos por foto (`ANALISE_API_TIMEOUT`).
+   Informe **`DATABASE_URL`** com a URL do Neon do passo 1. A API postural é
+   configurada automaticamente para
+   `https://opencv-bodyposture-api.onrender.com`; para usar outro endereço,
+   defina **`ANALISE_API_URL`** com uma URL HTTPS acessível pelo serviço Render,
+   sem `/analises` no final. Não use `localhost` ou `127.0.0.1`: eles apontam
+   para o próprio container da aplicação. O timeout padrão é 120 segundos por
+   foto (`ANALISE_API_TIMEOUT`).
    A `SECRET_KEY` é gerada automaticamente.
 5. Clique em **Apply** (ou *Deploy Blueprint*).
 
@@ -156,7 +161,7 @@ Ficam no Render, em **Environment**, nunca no código.
 | Variável | Valor | Origem |
 |---|---|---|
 | `DATABASE_URL` | Connection string do Neon | Você cola no passo 2 |
-| `ANALISE_API_URL` | URL base HTTPS da API postural, sem `/analises` | Você informa no passo 2; `render.yaml` usa `sync: false` |
+| `ANALISE_API_URL` | `https://opencv-bodyposture-api.onrender.com` | Padrão automático quando `RENDER=true`; opcionalmente defina no Render para sobrescrever |
 | `ANALISE_API_TIMEOUT` | `120` segundos por foto, maior que zero | Padrão definido no `render.yaml` |
 | `SECRET_KEY` | Chave aleatória que assina os logins | Gerada pelo Render |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` (24 h) | `render.yaml` |
@@ -169,8 +174,9 @@ Trocar a `SECRET_KEY` desloga todo mundo; não afeta os dados.
 ## Problemas comuns
 
 **O formulário é salvo, mas a análise das fotos falha.**
-Confira `ANALISE_API_URL` em **Environment**, a disponibilidade do serviço postural
-e o motivo exibido no resultado. O backend chama `POST /analises` nessa URL base.
+Confira se `ANALISE_API_URL` em **Environment** está sobrescrevendo o padrão,
+a disponibilidade do serviço postural e o motivo exibido no resultado. O backend
+chama `POST /analises` nessa URL base.
 Se houver demora, confira o tempo de inicialização da API e `ANALISE_API_TIMEOUT`.
 Após resolver a causa, use **Tentar análises pendentes novamente**; não é preciso
 reenviar o formulário.

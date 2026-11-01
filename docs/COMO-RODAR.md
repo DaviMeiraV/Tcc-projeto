@@ -126,7 +126,7 @@ Um modelo pronto está em [`backend/.env.example`](../backend/.env.example).
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Validade do login (24 horas) |
 | `STATIC_DIR` | `static` | Build do React. Se existir, a API também serve as telas |
 | `CORS_ORIGINS` | `http://localhost:5173` | Origens liberadas para chamar a API, separadas por vírgula |
-| `ANALISE_API_URL` | `http://127.0.0.1:8001` | URL base da API postural, sem `/analises`. No Compose, o padrão é `http://host.docker.internal:8001`; em produção, configure a URL HTTPS acessível pelo backend |
+| `ANALISE_API_URL` | Local: `http://127.0.0.1:8001`; Render: `https://opencv-bodyposture-api.onrender.com` | URL base da API postural, sem `/analises`. No Compose, o padrão é `http://host.docker.internal:8001`. Em produção, o valor é automático quando `RENDER=true`; defina a variável para sobrescrevê-lo |
 | `ANALISE_API_TIMEOUT` | `120` | Tempo máximo de espera em segundos por foto; deve ser maior que zero |
 | `PORT` | `8000` | Porta do servidor dentro do container |
 

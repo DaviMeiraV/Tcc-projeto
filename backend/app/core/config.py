@@ -1,7 +1,14 @@
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def obter_url_analise() -> str:
+    if os.getenv("RENDER", "").lower() == "true":
+        return "https://opencv-bodyposture-api.onrender.com"
+    return "http://127.0.0.1:8001"
 
 
 class Settings(BaseSettings):
@@ -12,7 +19,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = "http://localhost:5173"
-    ANALISE_API_URL: str = "http://127.0.0.1:8001"
+    ANALISE_API_URL: str = Field(default_factory=obter_url_analise)
     ANALISE_API_TIMEOUT: float = Field(default=120, gt=0)
     # Pasta com o build do React (npm run build). Quando existe, a API também
     # serve o frontend — é assim que roda no Docker e no deploy.
