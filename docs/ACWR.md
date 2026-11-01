@@ -13,8 +13,10 @@ Envios antigos com CSV também são calculados ao abrir o detalhe no histórico.
   Dias sem registros contam como zero. Carga crônica zero não produz score.
 
 A tela identifica o método, a referência e históricos com menos de 28 dias de registros.
-O score é uma razão, sem conversão para porcentagem. O score do questionário e a soma final
-continuam reservados, sem cálculo nem valores fictícios.
+O score é uma razão, sem conversão para porcentagem. O questionário gera o
+[ICSA com pesos iguais](SCORE-SUBJETIVO.md). O ACWR é normalizado e combinado com
+ICSA e postura no [IMCA](SCORE-FINAL.md), quando os três componentes são válidos
+e as regras de disponibilidade são atendidas.
 
 Quando o mesmo RPE maior que zero é aplicado a todas as sessões, ele multiplica ambas
 as cargas e se cancela na divisão: o ACWR continua igual à razão calculada por duração.
@@ -83,7 +85,7 @@ O arquivo `carga_treino.py` está dividido na ordem do processamento:
 2. `ler_atividades`: converte e valida cada linha, preservando o RPE original.
 3. `definir_carga`: escolhe o RPE de uma sessão e registra sua origem.
 4. `somar_atividades`: soma durações e cargas sem arredondamento antecipado.
-5. `calcular_csv`: seleciona as janelas, calcula ACWR e monta o resultado.
+5. `calcular_acwr`: seleciona as janelas, calcula ACWR e monta o resultado.
 6. `analisar_planilha`: registra logs e guarda sucesso ou erro na avaliação.
 
 `VERSAO_ACWR` identifica a regra utilizada. Ao abrir um resultado antigo, o sistema

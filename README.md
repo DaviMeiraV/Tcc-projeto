@@ -1,12 +1,14 @@
 # Sistema de Predição de Risco de Lesão — TCC
 
-Sistema web para coleta de dados de atletas de **corrida** e **ciclismo**, base de um modelo de
-predição de risco de lesão.
+Sistema web para coleta de dados de atletas de **corrida** e **ciclismo** e cálculo do
+Índice Multidimensional de Condição do Atleta (IMCA), um indicador experimental.
 
-**Fase atual: coleta de dados e análise postural das fotos.** O participante preenche um formulário
-em três etapas e pode consultar as imagens tratadas pela API externa. O **cálculo do score de risco ainda não está
-implementado**: a lógica será definida e validada cientificamente pelo autor do TCC a partir das
-respostas coletadas.
+**Fase atual: coleta e cálculo de ACWR, ICSA e IMCA, com análise postural das fotos.**
+O participante preenche um formulário em três etapas e consulta os scores atualizados,
+suas explicações e as imagens tratadas pela API externa. O ICSA versão 2 usa pesos iguais
+nas seis dimensões. O IMCA combina carga, condição subjetiva e postura quando os três
+componentes atendem às regras de disponibilidade. Não representa probabilidade clínica
+de lesão; a validação preditiva permanece como etapa futura.
 
 **Stack:** FastAPI · PostgreSQL · React (Vite) · Docker
 
@@ -19,6 +21,10 @@ Com o [Docker Desktop](https://www.docker.com/products/docker-desktop/) aberto:
 ```bash
 docker compose up --build
 ```
+
+Esse comando inicia o banco e a aplicação web. A **API postural é um serviço separado**:
+configure `ANALISE_API_URL` para um endereço acessível pelo backend. No Compose, o padrão
+é `http://host.docker.internal:8001`. Veja [Análise postural](docs/ANALISE-POSTURAL.md).
 
 | Endereço | O quê |
 |---|---|
@@ -34,6 +40,7 @@ docker compose up --build
 | [Deploy gratuito](docs/DEPLOY.md) | Passo a passo no Neon + Render, limites do plano gratuito |
 | [Análise postural](docs/ANALISE-POSTURAL.md) | Configuração da API externa, envio das fotos, resultados e novas tentativas |
 | [ACWR](docs/ACWR.md) | Leitura da planilha, cálculo das cargas e logs |
+| [ICSA](docs/SCORE-SUBJETIVO.md) | Seis componentes subjetivos com pesos iguais e preservação interna de versões |
 | [Score final](docs/SCORE-FINAL.md) | Padronização dos três componentes, média e regras de disponibilidade |
 | Swagger (`/docs`) | Cada rota da API com exemplos, testável pelo navegador |
 
@@ -103,18 +110,22 @@ Todas as rotas ficam sob `/api`. Detalhes, exemplos e testes em `/docs`.
 └── exemplo_treinos.csv      histórico de treino de exemplo para testes
 ```
 
-## O que ainda não está implementado
+## Resultados implementados e limites
 
-O **score de risco** — a contribuição científica do trabalho. A estrutura para recebê-lo já existe:
-
-- colunas `score_risco` e `classificacao` na tabela `avaliacoes`, ainda nulas;
+- o ICSA versão 2 fica em `detalhes.score_subjetivo`, com componentes, pesos e respostas;
 - `acwr`, `carga_aguda`, `carga_cronica` e `detalhes.acwr` já recebem o cálculo da planilha;
-- `services/score_final.py` preserva os scores originais, padroniza ACWR e postura e calcula a média dos três componentes válidos;
+- `services/score_final.py` padroniza ACWR e postura e guarda o IMCA em `detalhes.score_final`, incluindo a versão do ICSA utilizada;
+- resultados anteriores são preservados internamente em `detalhes.historico_scores` na troca de versão do ICSA; a tela mostra somente os scores atualizados;
+- colunas legadas `score_risco` e `classificacao` não são preenchidas pelos cálculos atuais;
 - o mapeamento legado `sessoes_treino` é mantido para preservar a compatibilidade com bancos existentes e a exclusão em cascata. O cálculo atual guarda suas sessões em `detalhes.acwr`.
+
+O IMCA fica indisponível quando falta um componente válido, o histórico é marcado como
+incompleto ou há várias fotos sem protocolo de seleção. Não há classificação clínica
+de risco nem predição validada de lesões. Veja [Score final](docs/SCORE-FINAL.md).
 
 ## Observações
 
-- O sistema exibe o score postural retornado pela API (0 a 1), sem calcular o score combinado de risco.
+- O sistema exibe o score postural de cada foto, o ACWR, o ICSA e o IMCA disponível, com suas explicações.
 - As tabelas são criadas e as colunas de CSV de bancos antigos são adicionadas automaticamente na subida
   ([ver como alterar o esquema](docs/BANCO-DE-DADOS.md#alterando-o-esquema)).
 - Fotos e CSVs ficam no próprio banco, então nada se perde em deploys ou reinícios

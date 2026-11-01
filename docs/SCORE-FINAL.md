@@ -21,7 +21,7 @@ Os valores originais são preservados. A composição usa os componentes padroni
 ```text
 C = min(1, max(0, (ACWR − 1,3) / 0,7))
 B = 1 − score postural original
-S = score subjetivo já calculado, sem mudar seus pesos
+S = ICSA versão 2, média dos seis componentes subjetivos normalizados
 Score final = (C + S + B) / 3
 ```
 
@@ -29,8 +29,9 @@ Todos os componentes utilizados na média têm sentido crescente de indicadores
 desfavoráveis segundo o modelo. Os cortes e pesos são experimentais; o resultado
 não representa probabilidade de lesão nem recebe classificação clínica.
 
-Exemplo: ACWR 1,8 → C = 0,7143; postural 0,80 → B = 0,20; subjetivo 0,45.
-A média, usando a precisão disponível antes de arredondar, é **0,4548**.
+Exemplo: ACWR 1,8 → C = 0,7143; postural 0,80 → B = 0,20; subjetivo 0,4667
+(exemplo revisado do ICSA). A média, usando a precisão disponível antes de
+arredondar, é **0,4603**.
 As transformações não arredondam intermediários; os valores persistidos e exibidos
 usam quatro casas. Os scores originais já arredondados não são recalculados.
 
@@ -58,19 +59,27 @@ após o processamento das fotos, nas novas tentativas e ao consultar o detalhe d
 Assim, uma nova tentativa bem-sucedida substitui o valor ausente da foto nesse bloco.
 A fórmula será executada novamente na consulta, inclusive para registros anteriores.
 
-O bloco contém `versao`, `status`, `motivos`, valores originais, normalizados e
+O bloco contém `versao`, `versao_icsa`, `status`, `motivos`, valores originais, normalizados e
 `foto_id` selecionada. Modalidade/fase permanecem no registro dessa foto, e origem
 do RPE e avisos de qualidade permanecem em `detalhes.acwr`. Campos legados como
 `score_risco` não são reutilizados. Registros antigos são atualizados ao consultar
 o detalhe, sem processamento em massa.
+
+`versao` continua 1 porque a regra de composição não mudou; `versao_icsa` passa
+a 2 para identificar os pesos iguais do componente subjetivo. Na atualização do
+ICSA, o bloco consolidado anterior é arquivado junto com o ICSA anterior em
+`detalhes.historico_scores`, antes do recálculo. Essa preservação ocorre na troca
+de versão do ICSA, não em cada tentativa de análise de imagem. A tela mostra
+somente os scores atualizados e suas explicações; o histórico é preservado internamente.
 
 `Concluido.jsx` recebe o JSON na consulta e nas novas tentativas e o repassa para
 `ResultadosAnalise.jsx`. O React apenas formata os valores; não repete os cálculos.
 ACWR bruto e imagens mantêm sua apresentação; os normalizados aparecem como texto
 secundário. O cartão final mostra o valor ou o motivo da indisponibilidade.
 
-Referência: `fundamentacao_imca_tcc.docx` (versão 1.0, outubro/2026), disponibilizada
-em Downloads e confirmada pelo usuário em substituição ao nome com sufixo `(2)`.
+Referências: `fundamentacao_imca_tcc.docx` (versão 1.0, outubro/2026) para composição,
+com a ponderação subjetiva substituída pela revisão
+`Fundamentacao_ICSA_Pesos_Iguais_Revisada - Copia.docx`.
 
 ## Validação
 

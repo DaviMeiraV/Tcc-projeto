@@ -1,6 +1,6 @@
 # Como rodar o projeto
 
-Há dois jeitos. Para **usar ou apresentar** o sistema, use o Docker: um comando sobe tudo. Para
+Há dois jeitos. Para **usar ou apresentar** o sistema, use o Docker: um comando sobe o banco e a aplicação web. Para
 **mexer no código** com recarga automática, use o modo de desenvolvimento.
 
 ---
@@ -33,7 +33,7 @@ tcc_app  | INFO:     Uvicorn running on http://0.0.0.0:8000
 | <http://localhost:8000> | Sistema (login, formulário) |
 | <http://localhost:8000/docs> | Swagger — documentação interativa da API |
 | <http://localhost:8000/redoc> | Mesma documentação, em formato de leitura |
-| `localhost:5433` | PostgreSQL (usuário `postgres`, senha `postgres`, banco `injuryqrisk`) |
+| `localhost:5433` | PostgreSQL (usuário `postgres`, senha `postgres`, banco `injuryrisk`) |
 
 O que sobe:
 
@@ -41,6 +41,13 @@ O que sobe:
 |---|---|---|
 | `tcc_postgres` | `postgres:16-alpine` | Banco de dados |
 | `tcc_app` | construída pelo `Dockerfile` | API FastAPI servindo também as telas React |
+
+A API postural **não é iniciada por esse Compose**. Execute-a separadamente na porta
+8001 do computador ou configure `ANALISE_API_URL` com outro endereço acessível pelo
+backend. O Compose usa `http://host.docker.internal:8001` por padrão. Consulte
+[Análise postural](ANALISE-POSTURAL.md) para o comando de inicialização e o contrato.
+Sem o serviço, o formulário continua salvo, mas a análise das fotos falha e o IMCA
+fica indisponível. É possível tentar novamente pela tela de resultado.
 
 ### Comandos do dia a dia
 
@@ -119,6 +126,8 @@ Um modelo pronto está em [`backend/.env.example`](../backend/.env.example).
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Validade do login (24 horas) |
 | `STATIC_DIR` | `static` | Build do React. Se existir, a API também serve as telas |
 | `CORS_ORIGINS` | `http://localhost:5173` | Origens liberadas para chamar a API, separadas por vírgula |
+| `ANALISE_API_URL` | `http://127.0.0.1:8001` | URL base da API postural, sem `/analises`. No Compose, o padrão é `http://host.docker.internal:8001`; em produção, configure a URL HTTPS acessível pelo backend |
+| `ANALISE_API_TIMEOUT` | `120` | Tempo máximo de espera em segundos por foto; deve ser maior que zero |
 | `PORT` | `8000` | Porta do servidor dentro do container |
 
 ---
@@ -172,5 +181,7 @@ por exemplo) ou troque o lado esquerdo do mapeamento em `docker-compose.yml`
 O banco não subiu. Veja com `docker compose ps` se `tcc_postgres` está `healthy`.
 
 **Adicionei uma coluna em `models.py` e a aplicação quebrou**
-As tabelas são criadas automaticamente, mas **não alteradas**. Veja
+As tabelas são criadas automaticamente. Há migrações específicas para adicionar
+as colunas de CSV em bancos antigos; outras mudanças de esquema precisam de uma
+migração explícita. Veja
 [Alterando o esquema](BANCO-DE-DADOS.md#alterando-o-esquema).

@@ -15,7 +15,7 @@ preservando os registros. Veja [Alterando o esquema](#alterando-o-esquema).
 erDiagram
     usuarios ||--o{ avaliacoes : "envia"
     avaliacoes ||--o{ fotos : "tem até 3"
-    avaliacoes ||--o{ sessoes_treino : "reservada"
+    avaliacoes ||--o{ sessoes_treino : "legado"
     fotos }o--|| arquivos : "conteúdo em"
     avaliacoes }o--o| arquivos : "CSV em"
 
@@ -37,7 +37,8 @@ erDiagram
         bool lesao_previa
         bool dor_limita
         varchar csv_arquivo
-        float score_risco "reservada, nula"
+        float score_risco "legado, sem escrita atual"
+        jsonb detalhes "ACWR, ICSA e IMCA"
     }
     fotos {
         int id PK
@@ -67,8 +68,8 @@ erDiagram
 | `usuarios` | Contas de acesso (login) | Sim |
 | `avaliacoes` | Um formulário enviado: dados pessoais, questionário e referência ao CSV | Sim |
 | `fotos` | Cada fotografia enviada, com os rótulos escolhidos pelo participante | Sim |
-| `sessoes_treino` | Linhas do CSV já interpretadas | **Não** — reservada para o cálculo de carga |
-| `arquivos` | Conteúdo das fotos e dos CSVs enviados | Sim |
+| `sessoes_treino` | Sessões de versões legadas | Sem novas inserções pelo cálculo atual; preservada por compatibilidade e cascata |
+| `arquivos` | Conteúdo das fotos enviadas, PNGs tratados e CSVs | Sim |
 
 **Exclusão em cascata:** apagar um usuário apaga as avaliações dele; apagar uma avaliação apaga
 as fotos e sessões dela (`ON DELETE CASCADE`). A rota `DELETE /api/avaliacoes/{id}` também apaga
@@ -137,17 +138,39 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 | `csv_nome_original` | `varchar(255)` | sim | Nome do arquivo no computador do participante |
 
 **Resultados** — `acwr`, `carga_aguda`, `carga_cronica` e `detalhes.acwr` são preenchidos
-pela análise da planilha. `score_risco` e `classificacao` continuam reservados e nulos.
-Veja [o cálculo de ACWR](ACWR.md).
+pela análise da planilha. ICSA e IMCA ficam no JSON `detalhes`. As colunas legadas
+`score_risco` e `classificacao` não recebem valores pelos cálculos atuais; registros
+antigos dessas colunas não são reescritos. Veja [ACWR](ACWR.md),
+[ICSA](SCORE-SUBJETIVO.md) e [IMCA](SCORE-FINAL.md).
 
-| Coluna | Tipo | Uso previsto |
+| Coluna | Tipo | Uso atual |
 |---|---|---|
 | `acwr` | `float` | Razão carga aguda : crônica |
 | `carga_aguda` | `float` | Carga média dos últimos 7 dias |
 | `carga_cronica` | `float` | Carga média dos últimos 28 dias |
-| `score_risco` | `float` | Pontuação final |
-| `classificacao` | `varchar(20)` | Faixa de risco |
+| `score_risco` | `float` | Legado, sem escrita pelos cálculos atuais; o IMCA fica no JSON |
+| `classificacao` | `varchar(20)` | Legado, sem classificação clínica gerada atualmente |
 | `detalhes` | `jsonb` | Memória de cálculo |
+
+#### Resultados em detalhes
+
+| Bloco JSON | Conteúdo |
+|---|---|
+| `detalhes.acwr` | Status, versão, razão bruta, cargas aguda/crônica, data de referência, totais de 7/28 dias, indicação de histórico incompleto, origem do RPE e sessões usadas no cálculo |
+| `detalhes.acwr.sessoes` | Lista de sessões da janela de 28 dias: linha do CSV, data, minutos, RPE original/utilizado, origem do RPE e carga. O CSV original também é preservado em `arquivos` |
+| `detalhes.score_subjetivo` | ICSA versão 2: pesos iguais (1/6), respostas utilizadas, componentes normalizados, contribuições e score. Se indisponível, identifica campos ausentes/inválidos |
+| `detalhes.score_final` | IMCA: versão da composição, versão do ICSA consumido, status, motivos de indisponibilidade, scores originais/normalizados, foto selecionada e resultado final |
+| `detalhes.historico_scores` | Lista criada quando um resultado anterior é substituído na troca de versão do ICSA: data de arquivamento UTC, motivo, versão de destino e cópias dos blocos subjetivo/final anteriores |
+
+Esses blocos usam o JSONB existente, sem novas colunas. A consulta de um envio pode
+preencher ou atualizar cálculos antigos; o IMCA também é atualizado após a análise
+das fotos. `historico_scores` é um registro interno de rastreabilidade e não aparece
+na tela, que mostra somente scores atualizados e suas explicações. Não é um histórico
+de toda tentativa de análise postural. Os detalhes das versões estão nos guias de ICSA e IMCA.
+
+Um score zero válido é preservado. Scores ausentes ou inválidos são `null`, com status
+e motivos; não são convertidos em zero. Os resultados posturais individuais ficam em
+`fotos.analise`, e o consolidado referencia a foto por ID.
 
 ### `fotos`
 
@@ -164,8 +187,10 @@ Veja [o cálculo de ACWR](ACWR.md).
 
 ### `sessoes_treino`
 
-Criada mas **não preenchida** nesta fase: o CSV é guardado inteiro, sem leitura. Quando o cálculo
-de carga for implementado, cada linha do CSV vira uma linha aqui.
+Tabela legada, mantida para compatibilidade com bancos existentes e exclusão em
+cascata. O cálculo atual lê o CSV e guarda as sessões utilizadas em
+`avaliacoes.detalhes.acwr.sessoes`; não insere novas linhas nesta tabela.
+Sua remoção exige verificar dados antigos e preparar uma migração.
 
 | Coluna | Tipo | Nulo | Descrição |
 |---|---|---|---|
@@ -181,13 +206,14 @@ de carga for implementado, cada linha do CSV vira uma linha aqui.
 
 ### `arquivos`
 
-Guarda o conteúdo das fotos e dos CSVs. Fica no banco, e não em disco, porque o disco do Render
-gratuito é apagado a cada deploy ou quando o serviço dorme.
+Guarda o conteúdo das fotos enviadas, dos PNGs tratados e dos CSVs no banco.
+O endpoint `/uploads/{nome}` busca esse conteúdo em `arquivos`; ele não depende
+de um diretório físico `uploads`.
 
 | Coluna | Tipo | Nulo | Descrição |
 |---|---|---|---|
-| `nome` | `varchar(255)` | não | Chave primária, gerada aleatoriamente (`<hex>.jpg` ou `<hex>.csv`) |
-| `tipo` | `varchar(100)` | não | `image/jpeg` ou `text/csv` |
+| `nome` | `varchar(255)` | não | Chave primária, gerada aleatoriamente (`<hex>.jpg`, `<hex>.png` ou `<hex>.csv`) |
+| `tipo` | `varchar(100)` | não | `image/jpeg`, `image/png` ou `text/csv` |
 | `tamanho_bytes` | `integer` | não | Tamanho do conteúdo |
 | `conteudo` | `bytea` | não | O arquivo em si |
 | `criado_em` | `timestamptz` | não | Momento do envio (UTC) |

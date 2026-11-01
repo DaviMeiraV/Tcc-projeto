@@ -81,6 +81,7 @@ def calc_score_final(avaliacao) -> dict:
         "score_acwr": score_acwr,
         "score_acwr_normalizado": arredondar(acwr_normalizado),
         "score_subjetivo": score_subjetivo,
+        "versao_icsa": subjetivo.get("versao"),
         "scores_posturais": scores_posturais,
         "foto_id": foto_selecionada["foto_id"] if foto_selecionada else None,
         "score_postural_original": postural_original,

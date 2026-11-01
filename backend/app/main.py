@@ -20,7 +20,7 @@ async def ciclo_de_vida(_: FastAPI):
 
 
 DESCRICAO = """
-API do TCC **Sistema de Predição de Risco de Lesão** — fase de **coleta de dados**.
+API do TCC **Sistema de Predição de Risco de Lesão** — coleta de dados e cálculo de indicadores experimentais.
 
 Recebe e armazena, para cada participante:
 
@@ -31,8 +31,16 @@ Recebe e armazena, para cada participante:
 
 As fotografias são enviadas à API postural externa, e o PNG tratado e o score
 postural (0 a 1) ficam associados a cada foto. O CSV alimenta o cálculo de ACWR
-(média diária de carga de 7 dias / média diária de 28 dias). O score de risco de lesão combinado
-com questionário e treino ainda não está implementado.
+(média diária de carga de 7 dias / média diária de 28 dias). O questionário gera o
+ICSA versão 2, média de seis componentes normalizados com pesos iguais (1/6).
+O IMCA combina ACWR normalizado, ICSA e score postural invertido com peso 1/3 cada,
+quando os três componentes atendem às regras de disponibilidade.
+
+Os cálculos ficam em `detalhes.acwr`, `detalhes.score_subjetivo` e `detalhes.score_final`.
+Dados ausentes ou inválidos não são substituídos por zero. Histórico marcado como
+incompleto ou várias fotos sem protocolo de seleção deixam o IMCA indisponível.
+Esses índices são experimentais, não representam probabilidade clínica de lesão
+e não recebem classificação clínica de risco. A API postural é hospedada separadamente.
 
 ## Como testar por aqui
 

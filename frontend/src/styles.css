@@ -225,7 +225,6 @@ body {
 .resultado-totais dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
 .resultado-formula { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--borda); color: var(--texto-suave); font-size: 13px; }
 .resultado-formula span { display: block; }
-.resultado-reservado { min-height: 150px; }
 .resultado-final { border-top: 3px solid var(--azul); background: #f7f9fb; }
 .resultado-acoes { gap: 12px; flex-wrap: wrap; }
 .resultado-acoes a { text-decoration: none; text-align: center; }

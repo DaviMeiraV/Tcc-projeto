@@ -92,7 +92,7 @@ class FotoOut(BaseModel):
 
 
 class AvaliacaoOut(BaseModel):
-    """Dados coletados e análise postural por foto, sem score de risco combinado."""
+    """Dados coletados, análise por foto e ACWR, ICSA e IMCA experimental em detalhes."""
 
     model_config = ConfigDict(from_attributes=True)
     id: int

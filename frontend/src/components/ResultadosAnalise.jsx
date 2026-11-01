@@ -120,6 +120,9 @@ export function ScoreAtleta({ resultado }) {
         )}
       </div>
       <p className="resultado-mensagem">Índice subjetivo experimental (ICSA). Quanto maior, mais desfavorável a condição subjetiva. Não representa probabilidade de lesão.</p>
+      {resultado?.versao === 2 && (
+        <p className="resultado-mensagem">Média de seis componentes normalizados, com pesos iguais: dor, fadiga, sono, recuperação, limitação por dor e histórico de lesão. Cada componente contribui com 1/6 do índice (aproximadamente 16,67%).</p>
+      )}
     </CartaoResultado>
   )
 }

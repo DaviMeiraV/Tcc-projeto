@@ -208,13 +208,14 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(self.requisicoes, [])
 
     def test_score_subjetivo_e_salvo_sem_fotos_ou_csv(self):
-        resposta = self.enviar([], dor=0, fadiga=0, sono=5, recuperacao=5,
-                              dor_limita=True, lesao_previa=True)
+        resposta = self.enviar([], dor=6, fadiga=4, sono=7, recuperacao=5,
+                              dor_limita=True, lesao_previa=False)
         self.assertEqual(resposta.status_code, 201, resposta.text)
         envio = resposta.json()
         resultado = envio['detalhes']['score_subjetivo']
-        self.assertEqual(resultado['score'], 0.45)
-        self.assertEqual(resultado['respostas']['dor'], 0)
+        self.assertEqual(resultado['score'], 0.4667)
+        self.assertEqual(resultado['versao'], 2)
+        self.assertEqual(resultado['respostas']['dor'], 6)
         self.assertTrue(resultado['respostas']['dor_limita'])
         with Session(self.engine) as db:
             avaliacao = db.get(Avaliacao, envio['id'])
@@ -233,13 +234,49 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(consulta.status_code, 200, consulta.text)
         dados = consulta.json()
         self.assertEqual(dados['detalhes']['acwr'], acwr)
-        self.assertEqual(dados['detalhes']['score_subjetivo']['score'], 0.215)
+        self.assertEqual(dados['detalhes']['score_subjetivo']['score'], 0.2167)
         self.assertEqual(dados['detalhes']['score_final']['score_acwr'], 1.2)
-        self.assertEqual(dados['detalhes']['score_final']['score_subjetivo'], 0.215)
+        self.assertEqual(dados['detalhes']['score_final']['score_subjetivo'], 0.2167)
         self.assertEqual(dados['dor'], envio['dor'])
         with patch('app.services.score_subjetivo.calcular_icsa') as calcular:
             self.assertEqual(self.client.get(f'/api/avaliacoes/{envio["id"]}').status_code, 200)
             calcular.assert_not_called()
+
+    def test_migra_icsa_antigo_e_imca_sem_perder_resultados_na_consulta_e_reanalise(self):
+        for caminho in ('consulta', 'reanalise'):
+            with self.subTest(caminho=caminho):
+                respostas = dict(dor=6, fadiga=4, sono=7, recuperacao=5,
+                                 dor_limita=True, lesao_previa=False)
+                envio = self.enviar(**respostas).json()
+                acwr = {'status': 'concluida', 'acwr': 1.8, 'historico_incompleto': False}
+                antigo = {
+                    'versao': 1, 'status': 'concluida', 'score': 0.53,
+                    'respostas': respostas,
+                    'pesos': {'dor': 0.25, 'fadiga': 0.15, 'sono': 0.15,
+                              'recuperacao': 0.15, 'dor_limita': 0.20, 'lesao_previa': 0.10},
+                }
+                final_antigo = {'versao': 1, 'score_subjetivo': 0.53, 'score_final': 0.4314}
+                with Session(self.engine) as db:
+                    avaliacao = db.get(Avaliacao, envio['id'])
+                    avaliacao.detalhes = {'acwr': acwr, 'score_subjetivo': antigo,
+                                         'score_final': final_antigo}
+                    db.commit()
+                url = f'/api/avaliacoes/{envio["id"]}'
+                resposta = self.client.get(url) if caminho == 'consulta' else self.client.post(url + '/analises')
+                self.assertEqual(resposta.status_code, 200, resposta.text)
+                detalhes = resposta.json()['detalhes']
+                self.assertEqual(detalhes['score_subjetivo']['score'], 0.4667)
+                self.assertEqual(detalhes['score_final']['score_final'], 0.4103)
+                self.assertEqual(detalhes['score_final']['versao_icsa'], 2)
+                self.assertEqual(detalhes['acwr'], acwr)
+                historico = detalhes['historico_scores']
+                self.assertEqual(len(historico), 1)
+                self.assertEqual(historico[0]['score_subjetivo'], antigo)
+                self.assertEqual(historico[0]['score_final'], final_antigo)
+                with Session(self.engine) as db:
+                    self.assertEqual(db.get(Avaliacao, envio['id']).detalhes, detalhes)
+                self.assertEqual(self.client.get(url).json()['detalhes'], detalhes)
+                self.assertEqual(self.client.post(url + '/analises').json()['detalhes'], detalhes)
 
     def test_csv_calcula_persiste_e_expoe_acwr_com_logs(self):
         # A resposta mantém tanto a razão bruta quanto a transformação.

@@ -46,7 +46,7 @@ São reutilizados `fotos.analise` e `arquivos`. Na inicialização, bancos antig
 
 Excluir um envio remove também seus PNGs tratados deste banco; não remove a cópia mantida pela API externa em `saida/`.
 
-O score postural não é o score combinado de risco de lesão, que continua sem implementação. O CSV também alimenta o [cálculo de ACWR](ACWR.md), exibido em um componente próprio na página final.
+O score postural original é invertido (`1 − P`) para compor o [IMCA experimental](SCORE-FINAL.md), junto ao [ACWR normalizado](ACWR.md) e ao [ICSA com pesos iguais](SCORE-SUBJETIVO.md). O IMCA depende das três análises válidas e das regras de disponibilidade; com várias fotos sem protocolo de seleção, permanece indisponível. A tela mostra os scores atualizados e suas explicações. Esses valores não representam probabilidade clínica de lesão.
 
 ## Verificação
 

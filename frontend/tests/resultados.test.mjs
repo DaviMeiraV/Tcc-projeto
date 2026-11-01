@@ -20,7 +20,21 @@ const renderizar = (componente, props) => renderToStaticMarkup(React.createEleme
 test('exibe o final do backend com quatro casas, inclusive zero', () => {
   assert.match(renderizar(ScoreFinal, { resultado: { score_final: 0.4548 } }), /0,4548 \/ 1/)
   assert.match(renderizar(ScoreFinal, { resultado: { score_final: 0 } }), /0,0000 \/ 1/)
-  assert.match(renderizar(ScoreAtleta, { resultado: { status: 'concluida', score: 0.45 } }), /0,4500 \/ 1/)
+  assert.match(renderizar(ScoreAtleta, { resultado: { status: 'concluida', score: 0.4667, versao: 2 } }), /0,4667 \/ 1/)
+})
+
+test('exibe apenas o ICSA atualizado e sua explicação mesmo com histórico disponível', () => {
+  const html = renderizar(ScoreAtleta, {
+    resultado: { status: 'concluida', score: 0.4667, versao: 2 },
+    historico: [{ score_subjetivo: { versao: 1, score: 0.53 }, score_final: { score_final: 0.4314 } }],
+  })
+  assert.match(html, /pesos iguais/)
+  assert.match(html, /1\/6/)
+  assert.match(html, /0,4667 \/ 1/)
+  assert.doesNotMatch(html, /ICSA anterior|Score final anterior|Resultados anteriores/)
+  assert.doesNotMatch(html, /0,5300|0,4314|<details/)
+  const legado = renderizar(ScoreAtleta, { resultado: { status: 'concluida', score: 0.53, versao: 1 } })
+  assert.doesNotMatch(legado, /pesos iguais/)
 })
 
 test('exibe indisponibilidade e seu motivo sem imputar zero', () => {

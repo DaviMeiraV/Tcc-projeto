@@ -90,7 +90,10 @@ class Foto(Base):
 
 
 class SessaoTreino(Base):
-    """Linha do CSV de histórico de treino usada no cálculo do ACWR."""
+    """Modelo legado preservado por compatibilidade e exclusão em cascata.
+
+    O cálculo atual guarda as sessões em Avaliacao.detalhes['acwr']['sessoes'].
+    """
 
     __tablename__ = "sessoes_treino"
 

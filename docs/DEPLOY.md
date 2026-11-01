@@ -1,6 +1,7 @@
 # Deploy gratuito
 
-O sistema fica no ar sem custo usando dois serviços:
+A aplicação web e o banco usam os serviços abaixo. A análise postural depende
+também de uma API separada, que deve ser implantada e estar acessível ao backend.
 
 | Peça | Onde | Plano | Por quê |
 |---|---|---|---|
@@ -9,10 +10,17 @@ O sistema fica no ar sem custo usando dois serviços:
 
 Respostas, fotos e CSVs ficam **todos no banco**, que é permanente.
 
+O `render.yaml` deste repositório não implanta a API postural. Configure sua URL
+base em `ANALISE_API_URL`, por exemplo `https://SUA-API-POSTURAL`, sem `/analises`
+no final. A disponibilidade e o custo dessa hospedagem devem ser avaliados
+separadamente. Veja [Análise postural](ANALISE-POSTURAL.md).
+
 ```mermaid
 flowchart LR
     U[Participante<br/>navegador] -->|HTTPS| R[Render<br/>container Docker<br/>React + FastAPI]
     R -->|SQL / SSL| N[(Neon<br/>PostgreSQL<br/>respostas + fotos + CSVs)]
+    R -->|POST /analises| P[API postural separada]
+    P -->|Score e PNG tratado| R
 ```
 
 > **Por que o banco não fica no Render?** O Postgres gratuito do Render **expira 30 dias após a
@@ -47,15 +55,18 @@ Não é preciso criar tabelas: a aplicação cria tudo sozinha na primeira vez q
 
 ## Passo 2 — Aplicação no Render
 
-O repositório já tem um [`render.yaml`](../render.yaml) que descreve o serviço inteiro, então é só
-apontar o Render para ele.
+O repositório já tem um [`render.yaml`](../render.yaml) que descreve o serviço web
+(FastAPI e React). O banco e a API postural são configurados por suas URLs.
 
 1. Acesse [render.com](https://render.com) e entre com o **GitHub** (a mesma conta dona do repositório).
 2. No painel, clique em **New +** → **Blueprint**.
 3. Conecte o repositório **`DaviMeiraV/Tcc-projeto`**. Se ele não aparecer, clique em
    *Configure account* e libere o acesso do Render a esse repositório.
 4. O Render lê o `render.yaml` e mostra o serviço `tcc-risco-lesao` a ser criado.
-   Ele vai pedir o valor de **`DATABASE_URL`**: cole a URL do Neon do passo 1.
+   Informe **`DATABASE_URL`** com a URL do Neon do passo 1 e **`ANALISE_API_URL`**
+   com a URL HTTPS da API postural separada, acessível pelo serviço Render.
+   Não use `localhost` ou `127.0.0.1`: eles apontam para o próprio container da aplicação.
+   O timeout padrão é 120 segundos por foto (`ANALISE_API_TIMEOUT`).
    A `SECRET_KEY` é gerada automaticamente.
 5. Clique em **Apply** (ou *Deploy Blueprint*).
 
@@ -83,6 +94,13 @@ https://tcc-risco-lesao.onrender.com
 
 Crie uma conta pela tela de cadastro e envie um formulário de teste. No Neon, em **Tables**, as
 tabelas `usuarios`, `avaliacoes`, `fotos` e `arquivos` devem aparecer com o registro.
+
+Para verificar a integração postural, envie uma foto válida e confira o PNG tratado
+e o score na tela de resultado. O endpoint `/api/saude` verifica apenas a aplicação;
+não comprova a conexão com a API postural. Falhas de análise preservam o formulário
+e podem ser tentadas novamente. Para obter IMCA, também são necessários ICSA e ACWR
+válidos, histórico não marcado como incompleto e exatamente uma foto válida conforme
+as [regras atuais de disponibilidade](SCORE-FINAL.md).
 
 Esse é o link para mandar aos participantes.
 
@@ -138,6 +156,8 @@ Ficam no Render, em **Environment**, nunca no código.
 | Variável | Valor | Origem |
 |---|---|---|
 | `DATABASE_URL` | Connection string do Neon | Você cola no passo 2 |
+| `ANALISE_API_URL` | URL base HTTPS da API postural, sem `/analises` | Você informa no passo 2; `render.yaml` usa `sync: false` |
+| `ANALISE_API_TIMEOUT` | `120` segundos por foto, maior que zero | Padrão definido no `render.yaml` |
 | `SECRET_KEY` | Chave aleatória que assina os logins | Gerada pelo Render |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` (24 h) | `render.yaml` |
 | `PORT` | `10000` | Definida pelo próprio Render |
@@ -147,6 +167,13 @@ Trocar a `SECRET_KEY` desloga todo mundo; não afeta os dados.
 ---
 
 ## Problemas comuns
+
+**O formulário é salvo, mas a análise das fotos falha.**
+Confira `ANALISE_API_URL` em **Environment**, a disponibilidade do serviço postural
+e o motivo exibido no resultado. O backend chama `POST /analises` nessa URL base.
+Se houver demora, confira o tempo de inicialização da API e `ANALISE_API_TIMEOUT`.
+Após resolver a causa, use **Tentar análises pendentes novamente**; não é preciso
+reenviar o formulário.
 
 **O build falha no Render.**
 Abra **Logs** e procure a primeira linha com `ERROR`. Rode `docker compose up --build` na sua

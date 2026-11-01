@@ -1,6 +1,6 @@
 # Como os três scores são calculados
 
-Este documento descreve os três cálculos originais, que foram preservados.
+Este documento descreve os três cálculos atuais, incluindo o ICSA revisado com pesos iguais.
 A padronização e a composição implementadas estão em [SCORE-FINAL.md](SCORE-FINAL.md).
 
 | Score | Origem | Escala atual | Significado de um valor maior |
@@ -49,17 +49,22 @@ campos representam uma condição mais favorável. Para as respostas sim/não,
 sim vale 1 e não vale 0.
 
 ```text
-ICSA = 0,25 × (dor ÷ 10)
-     + 0,15 × (fadiga ÷ 10)
-     + 0,15 × ((10 − sono) ÷ 10)
-     + 0,15 × ((10 − recuperação) ÷ 10)
-     + 0,20 × dor que limita treinos
-     + 0,10 × lesão prévia
+ICSA = ((dor ÷ 10)
+      + (fadiga ÷ 10)
+      + ((10 − sono) ÷ 10)
+      + ((10 − recuperação) ÷ 10)
+      + dor que limita treinos
+      + lesão prévia) ÷ 6
 ```
 
-Os pesos somam 1. O resultado vai de 0 (mais favorável) a 1 (mais desfavorável),
-com quatro casas decimais. Por exemplo, dor e fadiga iguais a 0, sono e recuperação
-iguais a 5, com dor que limita treinos e lesão prévia, produzem ICSA de 0,45.
+Cada dimensão tem peso 1/6, sem arredondamento antecipado. O resultado vai de
+0 (mais favorável) a 1 (mais desfavorável), com quatro casas decimais. Por exemplo,
+dor 6, fadiga 4, sono 7, recuperação 5, limitação por dor Sim e lesão prévia Não
+produzem ICSA de 0,4667.
+
+Esta é a versão 2, conforme a revisão específica do ICSA de outubro de 2026.
+Na troca de versão, os resultados anteriores do ICSA e do consolidado são preservados
+em `detalhes.historico_scores`. Veja [Score subjetivo](SCORE-SUBJETIVO.md).
 
 RPE, idade, peso e os demais dados de caracterização não entram nessa fórmula.
 Se uma das seis respostas estiver ausente ou inválida, o score fica indisponível;

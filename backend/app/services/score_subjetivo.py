@@ -5,22 +5,18 @@ Não representa probabilidade de lesão e não possui faixas de risco clínico.
 """
 
 import math
+from copy import deepcopy
+from datetime import datetime, timezone
 
-VERSAO_ICSA = 1
-PESOS = {
-    "dor": 0.25,
-    "fadiga": 0.15,
-    "sono": 0.15,
-    "recuperacao": 0.15,
-    "dor_limita": 0.20,
-    "lesao_previa": 0.10,
-}
+VERSAO_ICSA = 2
+CAMPOS = ("dor", "fadiga", "sono", "recuperacao", "dor_limita", "lesao_previa")
+PESOS = {campo: 1 / len(CAMPOS) for campo in CAMPOS}
 CAMPOS_BINARIOS = {"dor_limita", "lesao_previa"}
 ESCALAS_INVERTIDAS = {"sono", "recuperacao"}
 
 
 def calcular_icsa(respostas: dict) -> dict:
-    """Valida as seis respostas e calcula a soma das contribuições ponderadas.
+    """Valida as seis respostas e calcula a média dos componentes normalizados.
 
     RPE e dados de caracterização não participam desta versão da fórmula.
     Respostas ausentes ou inválidas nunca são substituídas por zero.
@@ -74,12 +70,12 @@ def calcular_icsa(respostas: dict) -> dict:
         "status": "concluida",
         "componentes": componentes,
         "contribuicoes": {campo: round(valor, 4) for campo, valor in contribuicoes.items()},
-        "score": round(sum(contribuicoes.values()), 4),
+        "score": round(sum(componentes.values()) / len(CAMPOS), 4),
     }
 
 
 def atualizar_score_subjetivo(avaliacao) -> bool:
-    """Guarda o cálculo no JSON existente, preservando ACWR e outros resultados.
+    """Atualiza o ICSA, arquivando os resultados anteriores na troca de versão.
 
     Retorna se houve alteração para a rota salvar também os envios antigos.
     """
@@ -87,6 +83,21 @@ def atualizar_score_subjetivo(avaliacao) -> bool:
     resultado_atual = detalhes.get("score_subjetivo") or {}
     if resultado_atual.get("versao") == VERSAO_ICSA:
         return False
+
+    # Arquiva antes de substituir: o consolidado antigo usou o ICSA anterior.
+    # Cópias independentes preservam pesos, respostas e resultados como estavam.
+    if resultado_atual or detalhes.get("score_final"):
+        anterior = {
+            "arquivado_em": datetime.now(timezone.utc).isoformat(),
+            "motivo": "atualizacao_icsa",
+            "versao_icsa_destino": VERSAO_ICSA,
+            "score_subjetivo": deepcopy(detalhes.get("score_subjetivo")),
+            "score_final": deepcopy(detalhes.get("score_final")),
+        }
+        detalhes = {
+            **detalhes,
+            "historico_scores": [*(detalhes.get("historico_scores") or []), anterior],
+        }
 
     respostas = {campo: getattr(avaliacao, campo, None) for campo in PESOS}
     avaliacao.detalhes = {**detalhes, "score_subjetivo": calcular_icsa(respostas)}
