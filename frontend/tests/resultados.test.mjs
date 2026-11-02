@@ -17,6 +17,46 @@ await build({ entryPoints: ['src/components/ResultadosAnalise.jsx'], outfile: ar
 const { ScoreFinal, ScoreAtleta, ScoreAcwr, ImagemTratada } = createRequire(import.meta.url)(arquivo)
 const renderizar = (componente, props) => renderToStaticMarkup(React.createElement(componente, props))
 
+const painelArquivo = join(pasta, 'painel.cjs')
+await build({ stdin: { contents: `export { AdminProtegido } from './src/App.jsx';
+  export { CartaoAvaliacao } from './src/pages/PainelAdmin.jsx';
+  export { Etapa1 } from './src/pages/Formulario.jsx';`, resolveDir: process.cwd() },
+  outfile: painelArquivo, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic' })
+const { AdminProtegido, CartaoAvaliacao, Etapa1 } = createRequire(import.meta.url)(painelArquivo)
+
+test('acesso admin consulta a sessão ao entrar na rota, inclusive após login', () => {
+  let usuario = null
+  globalThis.localStorage = { getItem: () => JSON.stringify(usuario) }
+  try {
+    assert.equal(AdminProtegido().props.to, '/formulario')
+    usuario = { email: 'andrevolimajp@gmail.com' }
+    assert.equal(AdminProtegido().type.name, 'PainelAdmin')
+    usuario = { email: 'participante@example.com' }
+    assert.equal(AdminProtegido().props.to, '/formulario')
+  } finally { delete globalThis.localStorage }
+})
+
+test('painel mostra quatro scores e links de todas as fotos, sem perder score zero', () => {
+  const html = renderizar(CartaoAvaliacao, { avaliacao: {
+    id: 1, usuario_nome: 'Atleta', usuario_email: 'atleta@example.com', esporte: 'corrida',
+    criado_em: '2026-11-02T12:00:00Z', score_acwr: 1.5, score_acwr_normalizado: 0.2857,
+    score_subjetivo: 0, score_final: null, motivos_score_final: ['Há várias fotos.'],
+    fotos: [1, 2].map(id => ({ id, modalidade: 'corrida', fase: 'apoio_medio',
+      status_analise: 'concluida', score_postural: 0, imagem_tratada: `tratada${id}.png` })),
+  } })
+  for (const titulo of ['ACWR', 'Subjetivo (ICSA)', 'Postural', 'Final (IMCA)']) assert.ok(html.includes(titulo))
+  assert.match(html, /<strong>0<\/strong>/)
+  assert.match(html, /Há várias fotos/)
+  assert.match(html, /href="\/uploads\/tratada1.png"/)
+  assert.match(html, /href="\/uploads\/tratada2.png"/)
+})
+
+test('marcar lesão prévia mantém pergunta binária e não pede detalhes', () => {
+  const html = renderizar(Etapa1, { form: { lesao_previa: true }, erros: {}, set: () => () => {} })
+  assert.match(html, /Já sofreu lesão relacionada ao esporte/)
+  assert.doesNotMatch(html, /Descreva brevemente|Há quanto tempo ocorreu|<textarea/)
+})
+
 test('exibe o final do backend com quatro casas, inclusive zero', () => {
   assert.match(renderizar(ScoreFinal, { resultado: { score_final: 0.4548 } }), /0,4548 \/ 1/)
   assert.match(renderizar(ScoreFinal, { resultado: { score_final: 0 } }), /0,0000 \/ 1/)

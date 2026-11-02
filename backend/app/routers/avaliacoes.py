@@ -6,14 +6,21 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from starlette.concurrency import run_in_threadpool
 
 from app import armazenamento
 from app.db import get_db
 from app.models import Arquivo, Avaliacao, Foto, Usuario
 from app.routers.auth import usuario_atual
-from app.schemas import AvaliacaoCriar, AvaliacaoOut, AvaliacaoResumo
+from app.schemas import (
+    AvaliacaoCriar,
+    AvaliacaoOut,
+    AvaliacaoPainelAdmin,
+    AvaliacaoResumo,
+    FotoPainelAdmin,
+    PainelAdminOut,
+)
 from app.services.analise_postural import processar_fotos
 from app.services.carga_treino import VERSAO_ACWR, analisar_planilha
 from app.services.score_subjetivo import atualizar_score_subjetivo
@@ -41,8 +48,6 @@ EXEMPLO_PAYLOAD = json.dumps(
         "recuperacao": 6,
         "lesao_previa": True,
         "dor_limita": False,
-        "lesao_descricao": "Canelite na perna direita",
-        "lesao_quando": "6_12_meses",
         "consentimento_foto": False,
         "fotos_meta": [],
     },
@@ -52,6 +57,7 @@ EXEMPLO_PAYLOAD = json.dumps(
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png"}
 MAX_FOTOS = 3
 MAX_BYTES = 8 * 1024 * 1024
+EMAIL_ADMIN = "andrevolimajp@gmail.com"
 
 
 @router.post(
@@ -96,7 +102,6 @@ async def criar_avaliacao(
     | `sexo` | `masculino`, `feminino`, `outro` |
     | `esporte` / `modalidade` | `corrida`, `ciclismo` |
     | `tempo_pratica` | `menos_6_meses`, `6_meses_1_ano`, `1_3_anos`, `3_5_anos`, `mais_5_anos` |
-    | `lesao_quando` | `menos_3_meses`, `3_6_meses`, `6_12_meses`, `mais_1_ano` |
     | `fase` (corrida) | `contato_inicial`, `apoio_medio` |
     | `fase` (ciclismo) | `fase_superior`, `extensao_maxima` |
     | `rpe`, `dor`, `fadiga`, `sono`, `recuperacao` | inteiro de 0 a 10 |
@@ -186,6 +191,87 @@ def listar(usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_
     ).all()
 
 
+def atualizar_resultados(db: Session, avaliacao: Avaliacao) -> bool:
+    # Envios anteriores também recebem o resultado ao abrir o histórico.
+    atualizado = atualizar_score_subjetivo(avaliacao)
+    resultado_acwr = (avaliacao.detalhes or {}).get("acwr") or {}
+    if avaliacao.csv_arquivo and resultado_acwr.get("versao") != VERSAO_ACWR:
+        arquivo = db.get(Arquivo, avaliacao.csv_arquivo)
+        if arquivo:
+            analisar_planilha(avaliacao, arquivo.conteudo)
+            atualizado = True
+    if atualizar_score_final(avaliacao):
+        atualizado = True
+    return atualizado
+
+
+@router.get(
+    "/admin",
+    response_model=PainelAdminOut,
+    summary="Listar resultados para o painel administrativo",
+    responses={403: {"description": "Acesso restrito ao administrador"}},
+)
+def painel_admin(usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """Lista os indicadores e fotos tratadas de todas as avaliações para o admin fixo."""
+    if usuario.email.casefold() != EMAIL_ADMIN:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso restrito ao administrador")
+
+    avaliacoes = db.scalars(
+        select(Avaliacao)
+        .options(joinedload(Avaliacao.usuario), selectinload(Avaliacao.fotos))
+        .order_by(Avaliacao.criado_em.desc(), Avaliacao.id.desc())
+    ).all()
+
+    itens = []
+    atualizado = False
+    for avaliacao in avaliacoes:
+        atualizado = atualizar_resultados(db, avaliacao) or atualizado
+        detalhes = avaliacao.detalhes or {}
+        score_final = detalhes.get("score_final") or {}
+        acwr = detalhes.get("acwr") or {}
+        subjetivo = detalhes.get("score_subjetivo") or {}
+        fotos = []
+        for foto in avaliacao.fotos:
+            analise = foto.analise or {}
+            imagem_tratada = analise.get("imagem_tratada") or {}
+            nome_imagem = imagem_tratada.get("arquivo")
+            fotos.append(FotoPainelAdmin(
+                id=foto.id,
+                modalidade=foto.modalidade,
+                fase=foto.fase,
+                status_analise=analise.get("status", "pendente"),
+                score_postural=(
+                    analise.get("score") if analise.get("status") == "concluida" else None
+                ),
+                imagem_tratada=nome_imagem if isinstance(nome_imagem, str) else None,
+            ))
+        itens.append(AvaliacaoPainelAdmin(
+            id=avaliacao.id,
+            criado_em=avaliacao.criado_em,
+            usuario_nome=avaliacao.usuario.nome,
+            usuario_email=avaliacao.usuario.email,
+            esporte=avaliacao.esporte,
+            score_acwr=acwr.get("acwr") if acwr.get("status") == "concluida" else None,
+            score_acwr_normalizado=score_final.get("score_acwr_normalizado"),
+            score_subjetivo=(
+                subjetivo.get("score")
+                if subjetivo.get("status") == "concluida"
+                else None
+            ),
+            score_final=(
+                score_final.get("score_final")
+                if score_final.get("status") == "concluida"
+                else None
+            ),
+            motivos_score_final=score_final.get("motivos") or [],
+            fotos=fotos,
+        ))
+
+    if atualizado:
+        db.commit()
+    return PainelAdminOut(total_avaliacoes=len(itens), avaliacoes=itens)
+
+
 @router.get(
     "/{avaliacao_id}",
     response_model=AvaliacaoOut,
@@ -197,16 +283,7 @@ def detalhar(avaliacao_id: int, usuario: Usuario = Depends(usuario_atual), db: S
     avaliacao = db.get(Avaliacao, avaliacao_id)
     if not avaliacao or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada")
-    # Envios anteriores também recebem o resultado ao abrir o histórico.
-    atualizado = atualizar_score_subjetivo(avaliacao)
-    resultado_acwr = (avaliacao.detalhes or {}).get("acwr") or {}
-    if avaliacao.csv_arquivo and resultado_acwr.get("versao") != VERSAO_ACWR:
-        arquivo = db.get(Arquivo, avaliacao.csv_arquivo)
-        if arquivo:
-            analisar_planilha(avaliacao, arquivo.conteudo)
-            atualizado = True
-    if atualizar_score_final(avaliacao):
-        atualizado = True
+    atualizado = atualizar_resultados(db, avaliacao)
     if atualizado:
         db.commit()
         db.refresh(avaliacao)

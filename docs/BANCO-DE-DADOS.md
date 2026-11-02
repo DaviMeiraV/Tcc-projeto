@@ -123,8 +123,8 @@ Uma linha por formulário enviado. O mesmo usuário pode enviar vários.
 | `recuperacao` | `integer` | não | 0 = nada · 10 = totalmente |
 | `lesao_previa` | `boolean` | não | Já sofreu lesão relacionada ao esporte |
 | `dor_limita` | `boolean` | não | A dor atual limita os treinos |
-| `lesao_descricao` | `text` | sim | Texto livre; só quando `lesao_previa` é verdadeiro |
-| `lesao_quando` | `varchar(40)` | sim | `menos_3_meses`, `3_6_meses`, `6_12_meses`, `mais_1_ano` |
+| `lesao_descricao` | `text` | sim | Legado: preservado nos registros antigos; não é mais coletado |
+| `lesao_quando` | `varchar(40)` | sim | Legado: preservado nos registros antigos; não é mais coletado |
 
 > Atenção à direção das escalas: em `dor` e `fadiga` **maior é pior**; em `sono` e
 > `recuperacao` **maior é melhor**. Isso importa na hora de montar o score.

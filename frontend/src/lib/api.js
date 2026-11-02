@@ -66,6 +66,7 @@ export const api = {
   cadastro: (dados) => requisicao('/auth/cadastro', { method: 'POST', body: dados }),
   login: (dados) => requisicao('/auth/login', { method: 'POST', body: dados }),
   listarAvaliacoes: () => requisicao('/avaliacoes'),
+  painelAdmin: () => requisicao('/avaliacoes/admin'),
   detalharAvaliacao: (id) => requisicao(`/avaliacoes/${id}`),
   repetirAnalises: (id) => requisicao(`/avaliacoes/${id}/analises`, { method: 'POST' }),
   removerAvaliacao: (id) => requisicao(`/avaliacoes/${id}`, { method: 'DELETE' }),

@@ -73,8 +73,6 @@ class AvaliacaoCriar(BaseModel):
     recuperacao: int = Field(ge=0, le=10)
     lesao_previa: bool
     dor_limita: bool
-    lesao_descricao: str | None = None
-    lesao_quando: str | None = None
 
     consentimento_foto: bool = False
     fotos_meta: list[FotoMeta] = []
@@ -123,3 +121,31 @@ class AvaliacaoResumo(BaseModel):
     criado_em: datetime
     esporte: str
     csv_nome_original: str | None = None
+
+
+class FotoPainelAdmin(BaseModel):
+    id: int
+    modalidade: str
+    fase: str
+    status_analise: str
+    score_postural: float | None = None
+    imagem_tratada: str | None = None
+
+
+class AvaliacaoPainelAdmin(BaseModel):
+    id: int
+    criado_em: datetime
+    usuario_nome: str
+    usuario_email: EmailStr
+    esporte: str
+    score_acwr: float | None = None
+    score_acwr_normalizado: float | None = None
+    score_subjetivo: float | None = None
+    score_final: float | None = None
+    motivos_score_final: list[str] = []
+    fotos: list[FotoPainelAdmin]
+
+
+class PainelAdminOut(BaseModel):
+    total_avaliacoes: int
+    avaliacoes: list[AvaliacaoPainelAdmin]

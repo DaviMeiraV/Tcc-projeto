@@ -169,6 +169,11 @@ Ficam no Render, em **Environment**, nunca no código.
 
 Trocar a `SECRET_KEY` desloga todo mundo; não afeta os dados.
 
+Depois de entrar com a conta `andrevolimajp@gmail.com`, o menu **Painel admin**
+mostra todas as avaliações, os scores ACWR, ICSA, postural por foto e IMCA final,
+além das imagens tratadas disponíveis. Esse acesso é baseado no endereço de e-mail
+da conta cadastrada.
+
 ---
 
 ## Problemas comuns

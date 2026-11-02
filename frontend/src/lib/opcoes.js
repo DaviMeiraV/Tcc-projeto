@@ -12,13 +12,6 @@ export const TEMPOS_PRATICA = [
   { valor: 'mais_5_anos', rotulo: 'Mais de 5 anos' },
 ]
 
-export const QUANDO_LESAO = [
-  { valor: 'menos_3_meses', rotulo: 'Menos de 3 meses' },
-  { valor: '3_6_meses', rotulo: 'De 3 a 6 meses' },
-  { valor: '6_12_meses', rotulo: 'De 6 a 12 meses' },
-  { valor: 'mais_1_ano', rotulo: 'Mais de 1 ano' },
-]
-
 export const ESPORTES = [
   { valor: 'corrida', rotulo: 'Corrida' },
   { valor: 'ciclismo', rotulo: 'Ciclismo' },

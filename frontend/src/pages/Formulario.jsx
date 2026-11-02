@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Campo, Chips, ChipsSimNao, PerguntaSlider } from '../components/Campos'
 import { api } from '../lib/api'
 import {
-  ESPORTES, FASES, JOELHOS, PERGUNTAS, QUANDO_LESAO, SEXOS, TEMPOS_PRATICA, rotuloDe,
+  ESPORTES, FASES, JOELHOS, PERGUNTAS, SEXOS, TEMPOS_PRATICA, rotuloDe,
 } from '../lib/opcoes'
 
 const MAX_FOTOS = 3
@@ -13,7 +13,7 @@ const TIPOS_IMAGEM = ['image/jpeg', 'image/jpg', 'image/png']
 const ESTADO_INICIAL = {
   idade: '', sexo: '', esporte: '', tempo_pratica: '', peso_kg: '', altura_cm: '',
   ...Object.fromEntries(PERGUNTAS.map((p) => [p.chave, p.inicial])),
-  lesao_previa: null, dor_limita: null, lesao_descricao: '', lesao_quando: '',
+  lesao_previa: null, dor_limita: null,
 }
 
 function validarEtapa1(f) {
@@ -178,8 +178,6 @@ export default function Formulario() {
         ...Object.fromEntries(PERGUNTAS.map((p) => [p.chave, Number(form[p.chave])])),
         lesao_previa: !!form.lesao_previa,
         dor_limita: !!form.dor_limita,
-        lesao_descricao: form.lesao_previa ? form.lesao_descricao || null : null,
-        lesao_quando: form.lesao_previa ? form.lesao_quando || null : null,
         consentimento_foto: consentimento,
         fotos_meta: fotos.map((f) => ({
           modalidade: f.modalidade,
@@ -266,7 +264,7 @@ export default function Formulario() {
   )
 }
 
-function Etapa1({ form, erros, set }) {
+export function Etapa1({ form, erros, set }) {
   return (
     <>
       <div className="secao">
@@ -325,23 +323,7 @@ function Etapa1({ form, erros, set }) {
           </Campo>
         </div>
 
-        {form.lesao_previa === true && (
-          <div style={{ borderLeft: '3px solid var(--azul-claro)', paddingLeft: 16, marginTop: 18 }}>
-            <Campo rotulo="Descreva brevemente a lesão">
-              <textarea value={form.lesao_descricao} onChange={(e) => set('lesao_descricao')(e.target.value)} />
-            </Campo>
-            <div style={{ marginTop: 14, maxWidth: 320 }}>
-              <Campo rotulo="Há quanto tempo ocorreu?">
-                <select value={form.lesao_quando} onChange={(e) => set('lesao_quando')(e.target.value)}>
-                  <option value="">Selecione</option>
-                  {QUANDO_LESAO.map((o) => (
-                    <option key={o.valor} value={o.valor}>{o.rotulo}</option>
-                  ))}
-                </select>
-              </Campo>
-            </div>
-          </div>
-        )}
+
       </div>
     </>
   )
@@ -487,7 +469,6 @@ function Etapa3({ form, fotos, csv }) {
     ['Lesão prévia', form.lesao_previa ? 'Sim' : 'Não'],
     ['Dor limita treinos', form.dor_limita ? 'Sim' : 'Não'],
   ]
-  if (form.lesao_previa && form.lesao_quando) linhas.push(['Lesão ocorreu há', rotuloDe(QUANDO_LESAO, form.lesao_quando)])
 
   return (
     <div className="secao">

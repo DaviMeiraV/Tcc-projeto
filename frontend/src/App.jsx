@@ -4,7 +4,18 @@ import { Cadastro, Login } from './pages/Autenticacao'
 import Formulario from './pages/Formulario'
 import Historico from './pages/Historico'
 import Concluido from './pages/Concluido'
+import PainelAdmin from './pages/PainelAdmin'
 import { getToken, getUsuario, limparSessao } from './lib/api'
+
+const EMAIL_ADMIN = 'andrevolimajp@gmail.com'
+
+function usuarioEhAdmin() {
+  return getUsuario()?.email?.toLowerCase() === EMAIL_ADMIN
+}
+
+export function AdminProtegido() {
+  return usuarioEhAdmin() ? <PainelAdmin /> : <Navigate to="/formulario" replace />
+}
 
 function Protegido() {
   if (!getToken()) return <Navigate to="/login" replace />
@@ -31,6 +42,7 @@ function Topo() {
       <nav>
         <NavLink to="/formulario" className={({ isActive }) => (isActive ? 'ativo' : '')}>Nova avaliação</NavLink>
         <NavLink to="/historico" className={({ isActive }) => (isActive ? 'ativo' : '')}>Histórico</NavLink>
+        {usuarioEhAdmin() && <NavLink to="/admin" className={({ isActive }) => (isActive ? 'ativo' : '')}>Painel admin</NavLink>}
         <span style={{ fontSize: 14 }}>{usuario?.nome}</span>
         <button type="button" onClick={sair}>Sair</button>
       </nav>
@@ -48,6 +60,7 @@ export default function App() {
         <Route path="/historico" element={<Historico />} />
         <Route path="/concluido" element={<Concluido />} />
         <Route path="/concluido/:id" element={<Concluido />} />
+        <Route path="/admin" element={<AdminProtegido />} />
       </Route>
       <Route path="*" element={<Navigate to={getToken() ? '/formulario' : '/login'} replace />} />
     </Routes>
